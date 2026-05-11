@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Refer IQ — AI-Powered Refer Queue Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+/* ── TOKENS ── */
+:root{
+  --p:#4A1F6E; --p-mid:#6B3494; --p-lt:#8B4FBB;
+  --p-pale:#EDE5F5; --p-tint:#F7F2FC;
+  --acc:#FF6B35;
+  --green:#1A9E6B; --green-lt:#E6F7F1; --green-bdr:#7ECDB3;
+  --amber:#C47D0A; --amber-lt:#FEF5E4; --amber-bdr:#EFC060;
+  --red:#B83333;   --red-lt:#FAEAEA;   --red-bdr:#F0AAAA;
+  --ink:#1A1025; --ink-mid:#3D2E52; --ink-lt:#7B6893;
+  --rule:#E4D9F0; --bg:#F4EFF9; --white:#FFFFFF;
+  --nav-h:54px; --bar-h:48px;
+  --q-w:280px; --ai-w:320px;
+  --r:8px; --rl:12px;
+}
+
+/* ── RESET ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body{display:flex;flex-direction:column;overflow:hidden}
+
+/* ── NAV ── */
+nav{height:var(--nav-h);background:var(--p);display:flex;align-items:center;justify-content:space-between;padding:0 20px;flex-shrink:0;z-index:50}
+.logo{display:flex;align-items:center;gap:9px;text-decoration:none}
+.logo-mark{width:30px;height:30px;background:var(--acc);border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:16px;color:#fff;flex-shrink:0}
+.logo-name{font-size:15px;font-weight:600;color:#fff;letter-spacing:-.01em}
+.logo-tag{font-size:10px;color:rgba(255,255,255,.5);font-weight:300;letter-spacing:.04em}
+.nav-r{display:flex;align-items:center;gap:12px}
+.nav-r>span{font-size:11px;color:rgba(255,255,255,.55)}
+.live-badge{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:3px 10px;font-size:11px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:5px}
+.ldot{width:6px;height:6px;background:#4ADE80;border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.nav-av{width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:500;cursor:pointer}
+
+/* ── STATS BAR ── */
+.stats-bar{height:var(--bar-h);background:var(--white);border-bottom:1px solid var(--rule);display:flex;align-items:center;padding:0 20px;flex-shrink:0;gap:0;overflow:hidden}
+.stat{display:flex;flex-direction:column;justify-content:center;padding:0 18px;border-right:1px solid var(--rule);height:100%}
+.stat:first-child{padding-left:0}
+.stat-v{font-size:17px;font-weight:600;color:var(--p);letter-spacing:-.03em;line-height:1}
+.stat-l{font-size:10px;color:var(--ink-lt);margin-top:1px;white-space:nowrap}
+.stat-d{font-size:10px;font-weight:500;white-space:nowrap}
+.stat-d.up{color:var(--green)}.stat-d.dn{color:var(--red)}
+.stats-pills{margin-left:auto;display:flex;gap:6px;align-items:center;flex-shrink:0}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:500;border:1px solid transparent;white-space:nowrap}
+.pill-warn{background:var(--amber-lt);color:#6B3F08;border-color:var(--amber-bdr)}
+.pill-ok{background:var(--green-lt);color:#0F5C3A;border-color:var(--green-bdr)}
+.pill-info{background:var(--p-pale);color:var(--p);border-color:#C2A6E0}
+.pill-danger{background:var(--red-lt);color:var(--red);border-color:var(--red-bdr)}
+
+/* ── THREE-PANEL SHELL ── */
+/* Body flex column: nav + statsbar + shell fills remaining height */
+.shell{
+  flex:1;
+  display:grid;
+  grid-template-columns:var(--q-w) 1fr var(--ai-w);
+  min-height:0; /* critical — allows grid children to shrink below content size */
+  overflow:hidden;
+}
+
+/* ── LEFT: QUEUE PANEL ── */
+.queue-panel{
+  display:flex;flex-direction:column;
+  background:var(--white);border-right:1px solid var(--rule);
+  overflow:hidden; /* header stays fixed, list scrolls */
+}
+.panel-hdr{
+  padding:11px 14px;border-bottom:1px solid var(--rule);
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;background:var(--white);
+}
+.panel-hdr-title{font-size:10px;font-weight:600;color:var(--ink-lt);text-transform:uppercase;letter-spacing:.08em}
+.cnt-badge{background:var(--p);color:#fff;font-size:10px;font-weight:500;padding:1px 7px;border-radius:10px}
+.q-list{overflow-y:auto;flex:1}
+.q-item{
+  padding:10px 14px 10px 11px;border-bottom:1px solid var(--rule);
+  cursor:pointer;transition:background .12s;
+  border-left:3px solid transparent;
+}
+.q-item:hover{background:var(--p-tint)}
+.q-item.active{background:var(--p-tint);border-left-color:var(--p)}
+.q-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.q-name{font-size:12px;font-weight:500;color:var(--ink)}
+.q-time{font-size:10px;color:var(--ink-lt)}
+.q-tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px}
+.tag{font-size:9px;font-weight:500;padding:2px 5px;border-radius:4px}
+.t-sc{background:var(--p-pale);color:var(--p-mid)}
+.t-am{background:#EEF2FF;color:#3730A3}
+.t-w{background:var(--amber-lt);color:#6B3F08}
+.t-ok{background:var(--green-lt);color:#0F5C3A}
+.t-dg{background:var(--red-lt);color:var(--red)}
+.t-fr{background:#FFF0F3;color:#9B1C3A;border:1px solid #F9B8C8}
+.q-ai{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--ink-lt)}
+.ai-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.ai-dot.approve{background:var(--green)}.ai-dot.decline{background:var(--red)}
+.ai-dot.refer{background:var(--amber)}.ai-dot.cond{background:var(--acc)}
+
+/* ── CENTRE: DETAIL + DECISION BAR ── */
+.centre-panel{
+  display:flex;flex-direction:column;
+  min-height:0;overflow:hidden;
+}
+.detail-scroll{
+  flex:1;overflow-y:auto;
+  padding:14px 16px;
+  display:flex;flex-direction:column;gap:12px;
+  min-height:0;
+}
+/* decision bar fixed at bottom of centre */
+.decision-bar{
+  flex-shrink:0;
+  background:var(--white);border-top:1px solid var(--rule);
+  padding:10px 16px;display:flex;gap:6px;align-items:center;
+}
+.decision-bar.hidden{display:none}
+.override-note{
+  flex-shrink:0;
+  background:var(--white);font-size:9px;color:var(--ink-lt);
+  text-align:center;padding:3px 16px 8px;
+}
+.override-note.hidden{display:none}
+
+/* ── CARDS ── */
+.card{background:var(--white);border:1px solid var(--rule);border-radius:var(--rl);overflow:hidden}
+.card-hdr{
+  padding:9px 14px;border-bottom:1px solid var(--rule);
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--white);
+}
+.card-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-lt);display:flex;align-items:center;gap:5px}
+.c-icon{width:17px;height:17px;background:var(--p-pale);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px}
+.card-meta{font-size:10px;color:var(--ink-lt)}
+.card-body{padding:12px 14px}
+
+/* Applicant */
+.app-row{display:flex;align-items:center;gap:11px;margin-bottom:12px}
+.av{width:38px;height:38px;border-radius:10px;background:var(--p);display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:15px;color:#fff;flex-shrink:0}
+.av-name{font-size:14px;font-weight:600;color:var(--ink);letter-spacing:-.02em}
+.av-sub{font-size:10px;color:var(--ink-lt);margin-top:1px;line-height:1.4}
+.dgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.dcell{background:var(--p-tint);border-radius:var(--r);padding:7px 9px;border:1px solid var(--rule)}
+.dcell-l{font-size:9px;color:var(--ink-lt);margin-bottom:1px}
+.dcell-v{font-size:12px;font-weight:600;color:var(--ink)}
+.dcell-v.warn{color:var(--amber)}.dcell-v.danger{color:var(--red)}.dcell-v.good{color:var(--green)}
+
+/* Source tabs */
+.src-tabs{display:flex;border-bottom:1px solid var(--rule);background:var(--white)}
+.src-tab{
+  flex:1;padding:8px 10px;font-size:11px;font-weight:500;
+  color:var(--ink-lt);cursor:pointer;border-bottom:2px solid transparent;
+  text-align:center;transition:all .15s;
+}
+.src-tab.active{color:var(--p);border-bottom-color:var(--p);background:var(--p-tint)}
+.src-tab:hover:not(.active){color:var(--ink-mid);background:var(--p-tint)}
+.src-panel{padding:12px 14px;display:none}
+.src-panel.active{display:block}
+
+/* Signals */
+.sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.sig-col{padding:0 10px}
+.sig-col:first-child{border-right:1px solid var(--rule);padding-left:0}
+.sig-col:last-child{padding-right:0}
+.sig-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:5px 0;border-bottom:1px solid var(--rule);
+}
+.sig-row:last-child{border-bottom:none}
+.sig-l{font-size:11px;color:var(--ink-lt)}
+.sig-v{font-size:11px;font-weight:500;color:var(--ink);text-align:right;max-width:50%}
+.sig-v.warn{color:var(--amber)}.sig-v.danger{color:var(--red)}.sig-v.good{color:var(--green)}
+.flag-strip{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
+.fc{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:500;padding:2px 7px;border-radius:20px}
+.fc.ok{background:var(--green-lt);color:#0F5C3A}
+.fc.warn{background:var(--amber-lt);color:#6B3F08}
+.fc.danger{background:var(--red-lt);color:var(--red)}
+.fc.fraud{background:#FFF0F3;color:#9B1C3A;border:1px solid #F9B8C8}
+
+/* Narrative */
+.narrative{font-size:11px;line-height:1.75;color:var(--ink-mid);background:var(--p-tint);border-left:3px solid var(--p-lt);padding:11px 13px}
+
+/* Alert banner */
+.alert-banner{
+  display:flex;align-items:flex-start;gap:9px;
+  padding:9px 13px;border-radius:var(--r);font-size:11px;font-weight:500;line-height:1.5;
+}
+.alert-banner.fraud{background:#FFF0F3;border:1px solid #F9B8C8;color:#7A1A35}
+.alert-banner.aml{background:var(--amber-lt);border:1px solid var(--amber-bdr);color:#6B3F08}
+.alert-icon{font-size:15px;flex-shrink:0;margin-top:1px}
+
+/* Buttons */
+.btn{
+  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;
+  padding:7px 14px;border-radius:var(--r);border:1px solid transparent;
+  cursor:pointer;transition:all .14s;white-space:nowrap;
+}
+.btn-primary{background:var(--p);color:#fff;border-color:var(--p);flex:1.2}
+.btn-primary:hover{background:var(--p-mid)}
+.btn-secondary{background:transparent;color:var(--p);border-color:var(--p);flex:1}
+.btn-secondary:hover{background:var(--p-tint)}
+.btn-danger{background:var(--red-lt);color:var(--red);border-color:var(--red-bdr);flex:1}
+.btn-danger:hover{background:#f7c9c9}
+.btn-warn{background:var(--amber-lt);color:#6B3F08;border-color:var(--amber-bdr);flex:1}
+.btn-warn:hover{background:#fde9ad}
+
+/* ── RIGHT: AI PANEL ── */
+.ai-panel{
+  display:flex;flex-direction:column;
+  background:var(--white);border-left:1px solid var(--rule);
+  overflow-y:auto; /* entire right column scrolls as one */
+  min-height:0;
+}
+.ai-empty{
+  display:flex;align-items:center;justify-content:center;
+  flex:1;color:var(--ink-lt);font-size:12px;padding:24px;text-align:center;
+}
+
+/* AI sections — stacked, not flex-competing */
+.rec-sec{padding:14px;border-bottom:1px solid var(--rule)}
+.eyebrow{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-lt);margin-bottom:8px}
+.rec-row{display:flex;align-items:flex-start;gap:9px;margin-bottom:10px}
+.rec-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;margin-top:1px}
+.rec-icon.cond{background:var(--amber-lt)}
+.rec-icon.approve{background:var(--green-lt)}
+.rec-icon.decline{background:var(--red-lt)}
+.rec-icon.refer{background:#FFF0F3}
+.rec-verdict{font-size:13px;font-weight:600;color:var(--ink);letter-spacing:-.01em;line-height:1.3}
+.rec-sub{font-size:10px;color:var(--ink-lt);margin-top:2px}
+.conf-row{display:flex;align-items:center;gap:7px;margin-bottom:10px}
+.conf-lbl{font-size:10px;color:var(--ink-lt);flex-shrink:0}
+.conf-track{flex:1;height:4px;background:var(--rule);border-radius:2px;overflow:hidden}
+.conf-fill{height:100%;border-radius:2px;transition:width 1s ease}
+.conf-fill.high{background:var(--green)}.conf-fill.mid{background:var(--amber)}.conf-fill.low{background:var(--red)}
+.conf-pct{font-size:11px;font-weight:600;min-width:28px;text-align:right}
+.conf-pct.high{color:var(--green)}.conf-pct.mid{color:var(--amber)}.conf-pct.low{color:var(--red)}
+.rec-note{font-size:11px;line-height:1.5;padding:8px 10px;border-radius:var(--r)}
+.rec-note.cond{background:var(--amber-lt);border:1px solid var(--amber-bdr);color:#5C3408}
+.rec-note.approve{background:var(--green-lt);border:1px solid var(--green-bdr);color:#0A4028}
+.rec-note.decline{background:var(--red-lt);border:1px solid var(--red-bdr);color:#7A2020}
+.rec-note.refer{background:#FFF0F3;border:1px solid #F9B8C8;color:#7A1A35}
+
+.factors-sec{padding:12px 14px;border-bottom:1px solid var(--rule)}
+.sec-title{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-lt);margin-bottom:8px}
+.f-row{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.f-name{font-size:10px;color:var(--ink-lt);width:100px;flex-shrink:0;line-height:1.3}
+.f-track{flex:1;height:3px;background:var(--rule);border-radius:2px;overflow:hidden}
+.ff-neg{height:100%;border-radius:2px;background:var(--green)}
+.ff-pos{height:100%;border-radius:2px;background:var(--red)}
+.ff-fr{height:100%;border-radius:2px;background:#D4537E}
+.f-dir{font-size:9px;width:11px;text-align:center;flex-shrink:0;font-weight:700}
+.f-dir.up{color:var(--red)}.f-dir.dn{color:var(--green)}.f-dir.fraud{color:#9B1C3A}
+.f-legend{font-size:9px;color:var(--ink-lt);margin-top:6px}
+
+.similar-sec{padding:12px 14px;border-bottom:1px solid var(--rule)}
+.sim-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:5px 8px;border-radius:var(--r);background:var(--p-tint);
+  margin-bottom:5px;border:1px solid var(--rule);
+}
+.sim-meta{font-size:10px;color:var(--ink-lt)}
+.sim-out{font-size:10px;font-weight:500;padding:2px 6px;border-radius:20px}
+.s-approve{background:var(--green-lt);color:#0F5C3A}
+.s-refer{background:var(--amber-lt);color:#6B3F08}
+.s-decline{background:var(--red-lt);color:var(--red)}
+.s-fraud{background:#FFF0F3;color:#9B1C3A}
+
+/* Chat — now just a plain stacked section, no flex-fighting */
+.chat-sec{padding:12px 14px;border-bottom:1px solid var(--rule)}
+.chat-messages{
+  display:flex;flex-direction:column;gap:7px;
+  max-height:220px;overflow-y:auto;
+  margin-bottom:8px;
+  padding-right:2px;
+}
+.bubble{font-size:11px;line-height:1.55;padding:7px 10px;border-radius:var(--rl);max-width:92%}
+.bubble.ai{background:var(--p-tint);color:var(--ink-mid);align-self:flex-start;border-bottom-left-radius:3px;border:1px solid var(--rule)}
+.bubble.uw{background:var(--p);color:rgba(255,255,255,.92);align-self:flex-end;border-bottom-right-radius:3px}
+.chat-input-row{display:flex;gap:5px;margin-bottom:7px}
+.chat-inp{
+  flex:1;font-family:'DM Sans',sans-serif;font-size:11px;
+  padding:7px 10px;border-radius:var(--r);
+  border:1px solid var(--rule);background:var(--p-tint);
+  color:var(--ink);outline:none;transition:border-color .14s;
+}
+.chat-inp:focus{border-color:var(--p-lt)}
+.chat-inp::placeholder{color:var(--ink-lt)}
+.chat-send{
+  font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;
+  padding:7px 12px;border-radius:var(--r);border:none;
+  background:var(--p);color:#fff;cursor:pointer;transition:background .14s;
+}
+.chat-send:hover{background:var(--p-mid)}
+.chat-hints{display:flex;gap:5px;flex-wrap:wrap}
+.hint{
+  font-size:10px;padding:3px 8px;border-radius:20px;
+  background:var(--p-pale);color:var(--p-mid);
+  cursor:pointer;border:1px solid var(--rule);transition:all .12s;
+}
+.hint:hover{border-color:var(--p-lt)}
+@keyframes shimmer{0%,100%{opacity:.4}50%{opacity:.8}}
+.thinking{font-size:11px;color:var(--ink-lt);font-style:italic;animation:shimmer 1.1s infinite;padding:7px 10px;align-self:flex-start}
+
+/* Toast */
+.toast{
+  position:fixed;bottom:20px;left:50%;
+  transform:translateX(-50%) translateY(12px);
+  background:var(--p);color:#fff;font-size:12px;font-weight:500;
+  padding:9px 18px;border-radius:24px;opacity:0;
+  transition:all .3s ease;pointer-events:none;z-index:999;
+  box-shadow:0 4px 20px rgba(74,31,110,.35);
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Scrollbars */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--rule);border-radius:4px}
+
+/* Empty state */
+.empty-state{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:100%;color:var(--ink-lt);gap:8px;
+}
+.empty-state-icon{font-size:32px;opacity:.4}
+.empty-state-text{font-size:13px}
+
+/* ── PAGE TABS ── */
+.page-tabs{
+  height:38px;background:var(--p);
+  display:flex;align-items:flex-end;padding:0 20px;
+  flex-shrink:0;gap:2px;border-bottom:none;
+}
+.page-tab{
+  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;
+  color:rgba(255,255,255,.55);
+  padding:7px 16px 6px;border-radius:7px 7px 0 0;
+  cursor:pointer;border:none;background:transparent;
+  transition:all .15s;letter-spacing:-.01em;
+  display:flex;align-items:center;gap:6px;
+  border-bottom:2px solid transparent;
+}
+.page-tab:hover{color:rgba(255,255,255,.85);background:rgba(255,255,255,.07)}
+.page-tab.active{
+  color:#fff;background:var(--bg);
+  border-bottom:2px solid var(--bg);
+  color:var(--p);
+}
+.tab-pane{display:none;flex:1;flex-direction:column;min-height:0;overflow:hidden}
+.tab-pane.active{display:flex}
+
+/* ── FLOW DIAGRAM TAB ── */
+.flow-wrap{
+  flex:1;overflow-y:auto;overflow-x:hidden;
+  padding:24px 28px 32px;background:var(--bg);
+}
+.flow-header{margin-bottom:20px}
+.flow-title{font-size:18px;font-weight:600;color:var(--ink);letter-spacing:-.02em;margin-bottom:4px}
+.flow-sub{font-size:12px;color:var(--ink-lt);line-height:1.5}
+.flow-controls{
+  display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;
+  padding:10px 14px;background:var(--white);border-radius:var(--rl);
+  border:1px solid var(--rule);
+}
+.fc-btn{
+  font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;
+  padding:5px 13px;border-radius:20px;
+  border:1px solid var(--rule);background:var(--white);
+  color:var(--ink-lt);cursor:pointer;transition:all .15s;
+}
+.fc-btn:hover{border-color:var(--p-lt);color:var(--p)}
+.fc-btn.fc-active{background:var(--p);color:#fff;border-color:var(--p)}
+.fc-speed{
+  font-family:'DM Sans',sans-serif;font-size:11px;
+  padding:5px 8px;border:1px solid var(--rule);border-radius:7px;
+  background:var(--white);color:var(--ink);cursor:pointer;
+}
+.fc-step-label{
+  margin-left:auto;font-size:11px;font-weight:500;
+  background:var(--p-pale);color:var(--p);
+  padding:5px 14px;border-radius:20px;
+  min-width:220px;text-align:center;
+}
+.flow-canvas-wrap{
+  background:var(--white);border:1px solid var(--rule);
+  border-radius:var(--rl);overflow:hidden;margin-bottom:14px;
+}
+.flow-canvas-wrap canvas{display:block;width:100%;height:auto}
+.flow-legend{
+  display:flex;gap:14px;flex-wrap:wrap;
+  padding:10px 16px;background:var(--white);
+  border-radius:var(--r);border:1px solid var(--rule);
+}
+.fl-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-lt)}
+.fl-dot{width:11px;height:11px;border-radius:3px;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="logo" href="#">
+    <div class="logo-mark">R</div>
+    <div>
+      <div class="logo-name">Refer IQ</div>
+      <div class="logo-tag">AI-Powered Refer Queue Platform · UK Credit Cards</div>
+    </div>
+  </a>
+  <div class="nav-r">
+    <span>Underwriting workbench</span>
+    <span class="live-badge"><span class="ldot"></span>AI engine live</span>
+    <div class="nav-av">UW</div>
+  </div>
+</nav>
+
+<!-- PAGE TAB BAR -->
+<div class="page-tabs">
+  <button class="page-tab active" id="ptab-workbench" onclick="switchPageTab('workbench')">
+    ⚡ Underwriter workbench
+  </button>
+  <button class="page-tab" id="ptab-flow" onclick="switchPageTab('flow')">
+    ◎ Solution architecture
+  </button>
+</div>
+
+<!-- TAB: WORKBENCH -->
+<div class="tab-pane active" id="pane-workbench" style="flex-direction:column">
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat">
+    <span class="stat-v" id="sb-q">5</span>
+    <span class="stat-l">Cases in queue</span>
+  </div>
+  <div class="stat">
+    <span class="stat-v">9.2<span style="font-size:11px;font-weight:400"> min</span></span>
+    <span class="stat-l">Avg decision time</span>
+    <span class="stat-d dn">↓ 58% vs manual</span>
+  </div>
+  <div class="stat">
+    <span class="stat-v">74%</span>
+    <span class="stat-l">AI concordance</span>
+    <span class="stat-d up">↑ this month</span>
+  </div>
+  <div class="stat">
+    <span class="stat-v">29%</span>
+    <span class="stat-l">STP approve rate</span>
+    <span class="stat-d up">↑ 4pts this week</span>
+  </div>
+  <div class="stat">
+    <span class="stat-v">£0.9m</span>
+    <span class="stat-l">Approved today</span>
+  </div>
+  <div class="stats-pills">
+    <span class="pill pill-danger" id="sb-fraud">3 fraud / AML flags</span>
+    <span class="pill pill-warn" id="sb-cx">2 high-complexity</span>
+    <span class="pill pill-ok">SLA on track</span>
+    <span class="pill pill-info">FCA Consumer Duty ✓</span>
+  </div>
+</div>
+
+<!-- THREE-PANEL SHELL -->
+<div class="shell">
+
+  <!-- LEFT: QUEUE -->
+  <div class="queue-panel">
+    <div class="panel-hdr">
+      <span class="panel-hdr-title">Refer queue</span>
+      <span class="cnt-badge" id="qcount">5</span>
+    </div>
+    <div class="q-list" id="queueList"></div>
+  </div>
+
+  <!-- CENTRE -->
+  <div class="centre-panel">
+    <div class="detail-scroll" id="detailScroll">
+      <div class="empty-state">
+        <div class="empty-state-icon">📋</div>
+        <div class="empty-state-text">Select a case from the queue to begin</div>
+      </div>
+    </div>
+    <div class="decision-bar hidden" id="decBar">
+      <button class="btn btn-primary" id="btnAI" onclick="decide('ai')"></button>
+      <button class="btn btn-secondary" onclick="decide('override')">Override limit</button>
+      <button class="btn btn-danger" onclick="decide('decline')">Decline</button>
+      <button class="btn btn-warn" onclick="decide('refer')">Refer up</button>
+    </div>
+    <div class="override-note hidden" id="overNote">
+      Decisions deviating from AI recommendation require an override reason — logged to audit trail · FCA Consumer Duty
+    </div>
+  </div>
+
+  <!-- RIGHT: AI PANEL -->
+  <div class="ai-panel" id="aiPanel">
+    <div class="ai-empty">AI analysis will appear<br>when a case is selected</div>
+  </div>
+
+</div>
+
+</div><!-- end #pane-workbench -->
+
+<!-- TAB: FLOW DIAGRAM -->
+<div class="tab-pane" id="pane-flow">
+  <div class="flow-wrap">
+    <div class="flow-header">
+      <div class="flow-title">End-to-end solution architecture</div>
+      <div class="flow-sub">Animated data flow — source systems → AI pipeline → underwriter decision → feedback loop · 12 steps · click any control to explore</div>
+    </div>
+    <div class="flow-controls">
+      <button class="fc-btn fc-active" id="fcPlay" onclick="fcTogglePlay()">⏸ Pause</button>
+      <button class="fc-btn" onclick="fcStepBack()">← Step back</button>
+      <button class="fc-btn" onclick="fcStepFwd()">Step forward →</button>
+      <button class="fc-btn" onclick="fcRestart()">↺ Restart</button>
+      <span style="font-size:11px;color:var(--ink-lt)">Speed:</span>
+      <select class="fc-speed" onchange="fcSetSpeed(this.value)">
+        <option value="2200">Slow</option>
+        <option value="1300" selected>Normal</option>
+        <option value="650">Fast</option>
+      </select>
+      <div class="fc-step-label" id="fcStepLabel">Step 1 of 12 — Application received</div>
+    </div>
+    <div class="flow-canvas-wrap">
+      <canvas id="fcCanvas" width="980" height="620"></canvas>
+    </div>
+    <div class="flow-legend">
+      <div class="fl-item"><div class="fl-dot" style="background:#4A1F6E"></div>Source systems</div>
+      <div class="fl-item"><div class="fl-dot" style="background:#0F6E56"></div>AI pipeline (backend)</div>
+      <div class="fl-item"><div class="fl-dot" style="background:#BA7517"></div>Decision &amp; governance</div>
+      <div class="fl-item"><div class="fl-dot" style="background:#185FA5"></div>Underwriter frontend</div>
+      <div class="fl-item"><div class="fl-dot" style="background:#639922;border-radius:50%"></div>Data packet</div>
+      <div class="fl-item"><div class="fl-dot" style="background:#A32D2D;border-radius:50%"></div>Fraud / AML alert</div>
+      <div class="fl-item"><div class="fl-dot" style="background:#BA7517;border-radius:50%"></div>AI output</div>
+    </div>
+  </div>
+</div><!-- end #pane-flow -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── DATA ── */
+const CASES = [
+  {
+    id:"REF-2025-00141", name:"James Mellor", initials:"JM",
+    dob:"12 Mar 1987", postcode:"LS2 7PB, Leeds",
+    time:"2 min ago", caseType:"AML",
+    tags:[{t:"Score 561",c:"t-sc"},{t:"Classic card",c:"t-am"},{t:"AML flag",c:"t-fr"},{t:"High util",c:"t-w"}],
+    aiDot:"cond", aiLabel:"Conditional issue — AML review required",
+    alertType:"aml",
+    alertText:"AML review required: cash deposits just below £10,000 threshold detected across three consecutive months in open banking data (possible structuring). No SAR filed — analyst must assess before any approval.",
+    app:{emp:"Employed — full time",employer:"Logistics Co Ltd",tenure:"3 yrs 4 mo",gross:"£28,500",net:"£1,920 / mo",product:"Classic credit card",aiLimit:"£1,500 (post-AML)"},
+    bureau:{rows:[
+      ["Experian score","561 / 999","warn"],["Score band","Fair — grey band","warn"],
+      ["CCJs (6 yr)","None","good"],["Defaults (6 yr)","None","good"],
+      ["Arrears (12 mo)","1 × 30-day late","warn"],["Hard searches (6 mo)","4","warn"],
+    ],flags:[{t:"⚠ 4 hard searches",c:"warn"},{t:"✓ Electoral roll 2 yrs",c:"ok"},{t:"✓ No CCJ / default",c:"ok"},{t:"⚠ Util 81%",c:"warn"}]},
+    fraud:{rows:[
+      ["CIFAS marker","None","good"],["National Hunter hits","0 matches","good"],
+      ["Identity verified","Passed — KB + doc","good"],["Address consistency","Confirmed","good"],
+      ["App vs bureau address","Match","good"],["Prior declined apps","None (12 mo)","good"],
+    ],flags:[{t:"✓ No CIFAS marker",c:"ok"},{t:"✓ No Hunter hits",c:"ok"},{t:"✓ Identity confirmed",c:"ok"}]},
+    ob:{rows:[
+      ["Avg net credits (90d)","£1,918 / mo","good"],["Salary consistency","Regular — monthly","good"],
+      ["Structuring pattern","Possible — sub-£10k splits","danger"],["Gambling activity","None detected","good"],
+      ["Payday loan activity","None detected","good"],["NDI (post-commitments)","£347 / mo","warn"],
+      ["DTI ratio","54%","warn"],["Credit utilisation","81% — 2 cards","danger"],
+    ],flags:[{t:"✗ Possible structuring",c:"fraud"},{t:"✓ Salary verified OB",c:"ok"},{t:"⚠ Thin NDI £347",c:"warn"}]},
+    narrative:"James Mellor is a 37-year-old employed applicant with 3+ years of stable tenure at Logistics Co Ltd. Experian score of 561 sits in the grey band. No CCJs, defaults, or CIFAS markers. Electoral roll confirmed in Leeds for two years.\n\nPrimary AML concern: three consecutive months of cash deposits in the £8,500–£9,800 range — each below the £10,000 automatic reporting threshold. This structuring pattern requires analyst review and source-of-funds documentation before any credit decision. A SAR should be submitted to the NCA under POCA 2002 if the customer cannot explain the source.\n\nAffordability: NDI of £347/month is thin. The AI-assessed credit limit of £1,500 keeps minimum repayment at £30/month — 8.7% of NDI, within FCA CONC 5.2 thresholds. A higher limit cannot be justified until AML clearance is obtained.",
+    ai:{
+      verdict:"Conditional approve (AML pending)",icon:"⚠️",iCls:"cond",
+      sub:"AI limit: £1,500 — AML review must complete first",
+      conf:62,cCls:"mid",
+      note:"Issue card at £1,500 only after AML analyst sign-off. Refer to MLRO if cash deposit source cannot be explained. Do not issue card before AML clearance.",
+      nCls:"cond",
+      factors:[
+        {n:"AML — structuring",w:88,fc:"ff-fr",dc:"fraud",dch:"!"},
+        {n:"Credit utilisation",w:82,fc:"ff-pos",dc:"up",dch:"▲"},
+        {n:"NDI buffer",w:63,fc:"ff-pos",dc:"up",dch:"▲"},
+        {n:"Hard enquiries",w:50,fc:"ff-pos",dc:"up",dch:"▲"},
+        {n:"Employment stability",w:70,fc:"ff-neg",dc:"dn",dch:"▼"},
+        {n:"Electoral roll",w:88,fc:"ff-neg",dc:"dn",dch:"▼"},
+        {n:"No CIFAS / Hunter",w:90,fc:"ff-neg",dc:"dn",dch:"▼"},
+      ],
+      similar:[
+        {m:"REF-2025-00098 · 554 · AML cleared",o:"Approved £1,200",c:"s-approve"},
+        {m:"REF-2025-00071 · 561 · Structuring",o:"MLRO referral",c:"s-fraud"},
+        {m:"REF-2024-09912 · 548 · Util 80%",o:"Declined",c:"s-decline"},
+      ],
+      hints:["AML pattern","MLRO threshold","Structuring rules","NDI calculation","Limit rationale"],
+      qa:{
+        "aml":"Three consecutive months of cash deposits in the range £8,500–£9,800 — each below the £10,000 automatic reporting threshold — constitutes a structuring pattern per JMLSG guidance. The analyst should request source-of-funds documentation. If the customer cannot explain the source credibly, a Suspicious Activity Report (SAR) must be submitted to the NCA under POCA 2002 s.330.",
+        "structuring":"Structuring (also known as smurfing) involves deliberately breaking transactions into amounts below reporting thresholds to avoid detection. It is an offence under POCA 2002 in the UK. Three consecutive sub-£10k cash deposits into an account with otherwise modest income is a clear red flag.",
+        "mlro":"MLRO referral is required if the customer cannot provide a credible explanation for the sub-threshold deposits. Under POCA 2002 s.330, the firm has a duty to disclose where there are reasonable grounds to suspect money laundering. The threshold for SAR submission is suspicion, not proof.",
+        "ndi":"NDI of £347/month is calculated after tax, NI, existing card minimum payments (£75/month total), estimated rent of £750/month from open banking, and average essential spend. At £1,500 limit, new minimum repayment is £30/month — leaving a residual NDI of £317, within FCA CONC stress tolerance subject to AML clearance.",
+        "limit":"The AI-assessed starting limit for this card application is £1,500. At 2% minimum repayment this is £30/month — 8.7% of NDI, within FCA CONC 5.2. A £3,500 starting limit would require £70/month (20% of NDI), breaching affordability policy. The limit is set by the lender based on affordability, not requested by the applicant.",
+        "default":"No defaults, CCJs, or bankruptcies across all three CRA reports. The 30-day arrears event in February 2024 was on a catalogue account, resolved within 18 days following a direct debit failure during a bank account switch.",
+      }
+    },
+    approveLabel:"Issue card — £1,500 (post-AML) ↗"
+  },
+
+  {
+    id:"REF-2025-00138", name:"Priya Sharma", initials:"PS",
+    dob:"04 Jul 1990", postcode:"E1 6RF, London",
+    time:"6 min ago", caseType:"Bureau",
+    tags:[{t:"Score 592",c:"t-sc"},{t:"Classic card",c:"t-am"},{t:"Thin file",c:"t-w"},{t:"No CCJs",c:"t-ok"}],
+    aiDot:"approve", aiLabel:"Issue card — approve at AI suggested limit",
+    alertType:null, alertText:null,
+    app:{emp:"Employed — part time",employer:"NHS Trust",tenure:"1 yr 8 mo",gross:"£19,200",net:"£1,340 / mo",product:"Classic credit card",aiLimit:"£2,000"},
+    bureau:{rows:[
+      ["Experian score","592 / 999","warn"],["Score band","Fair — thin file","warn"],
+      ["CCJs (6 yr)","None","good"],["Defaults (6 yr)","None","good"],
+      ["Arrears (12 mo)","None","good"],["Hard searches (6 mo)","1","good"],
+    ],flags:[{t:"✓ No CCJ / default / arrears",c:"ok"},{t:"⚠ Thin credit file",c:"warn"},{t:"✓ Electoral roll confirmed",c:"ok"}]},
+    fraud:{rows:[
+      ["CIFAS marker","None","good"],["National Hunter hits","0 matches","good"],
+      ["Identity verified","Passed — doc check","good"],["Address consistency","Confirmed","good"],
+      ["App vs bureau address","Match","good"],["Prior declined apps","None (12 mo)","good"],
+    ],flags:[{t:"✓ No CIFAS",c:"ok"},{t:"✓ Clean Hunter",c:"ok"},{t:"✓ Identity verified",c:"ok"}]},
+    ob:{rows:[
+      ["Avg net credits (90d)","£1,312 / mo","good"],["Salary consistency","Regular — monthly","good"],
+      ["Structuring pattern","None detected","good"],["Gambling activity","None detected","good"],
+      ["Payday loan activity","None detected","good"],["NDI (post-commitments)","£490 / mo","good"],
+      ["DTI ratio","31%","good"],["Credit utilisation","22% — 1 card","good"],
+    ],flags:[{t:"✓ Salary verified OB",c:"ok"},{t:"✓ Healthy NDI £490",c:"ok"},{t:"✓ No adverse spend",c:"ok"}]},
+    narrative:"Priya Sharma is a 34-year-old part-time NHS Trust employee with stable employment and a clean credit history. Experian score of 592 reflects a thin file rather than adverse history — she holds only one credit account (a low-limit store card) with perfect payment conduct.\n\nNo CCJs, defaults, arrears, CIFAS markers, or National Hunter hits. Electoral roll confirmed at East London address. Open banking confirms consistent salary credits of £1,312/month, healthy NDI of £490/month, and no adverse spend patterns.\n\nThe AI-assessed starting limit of £2,000 requires £40/month minimum repayment — 8.2% of NDI, well within FCA CONC affordability thresholds. This is a strong issue. The thin file is the sole reason for the refer flag — there is no credit impairment.",
+    ai:{
+      verdict:"Approve at £2,000",icon:"✓",iCls:"approve",
+      sub:"AI starting limit: £2,000 — strong affordability profile",
+      conf:84,cCls:"high",
+      note:"All three data sources clear. NDI sufficient. Thin file only — no adverse history anywhere. Issue card at AI-assessed starting limit of £2,000.",
+      nCls:"approve",
+      factors:[
+        {n:"Thin file risk",w:40,fc:"ff-pos",dc:"up",dch:"▲"},
+        {n:"NDI buffer £490",w:85,fc:"ff-neg",dc:"dn",dch:"▼"},
+        {n:"DTI ratio (31%)",w:80,fc:"ff-neg",dc:"dn",dch:"▼"},
+        {n:"Clean payment history",w:90,fc:"ff-neg",dc:"dn",dch:"▼"},
+        {n:"No CIFAS / Hunter",w:95,fc:"ff-neg",dc:"dn",dch:"▼"},
+        {n:"Employment (NHS)",w:68,fc:"ff-neg",dc:"dn",dch:"▼"},
+        {n:"Low utilisation 22%",w:85,fc:"ff-neg",dc:"dn",dch:"▼"},
+      ],
+      similar:[
+        {m:"REF-2025-00091 · 588 · Thin file",o:"Approved £1,500",c:"s-approve"},
+        {m:"REF-2025-00044 · 595 · NHS employ.",o:"Approved £2,000",c:"s-approve"},
+        {m:"REF-2024-09801 · 581 · Part-time",o:"Approved £1,000",c:"s-approve"},
+      ],
+      hints:["Why refer flag","Thin file risk","NDI breakdown","Limit affordability","NHS employment"],
+      qa:{
+        "refer flag":"The refer flag was triggered purely by the thin credit file — only one active credit account in the past 24 months. The scorecard lacks sufficient behavioural data to produce a confident approve decision. This is a data gap, not a risk signal. All available data points indicate a strong credit profile.",
+        "thin file":"A thin file indicates limited credit history, not bad credit. Priya has one credit account with perfect conduct. Open banking data, identity verification, and employment all support a positive credit profile. FCA guidance supports using alternative data (open banking) to supplement thin-file assessments under Consumer Duty.",
+        "ndi":"NDI of £490/month is calculated after tax, NI, one existing card minimum payment (£15/month), and committed essential outgoings from open banking. At £2,000 limit, minimum repayment is £40/month — reducing NDI to £450. Well within FCA CONC stress tolerance.",
+        "limit":"The AI-assessed starting limit for this card application is £2,000. At 2% minimum repayment this is £40/month — 8.2% of NDI, comfortably within FCA CONC affordability thresholds. There are no grounds to set a lower limit. Note: in credit card acquisition the lender sets the limit — Priya has not requested a specific amount.",
+        "nhs employment":"Part-time NHS Trust employment is considered stable income. NHS contracts are permanent public sector roles with defined pay scales. Income has been consistent for 20 months per open banking verification — no unexplained gaps or irregular credits.",
+        "affordability":"Full affordability assessment: NDI £490/month, DTI 31%, credit utilisation 22%, no payday or gambling activity, no arrears. Consumer Duty obligations satisfied — this product is genuinely appropriate for this customer's financial situation.",
+      }
+    },
+    approveLabel:"Issue card — £2,000 ↗"
+  },
+
+  {
+    id:"REF-2025-00133", name:"Marcus Webb", initials:"MW",
+    dob:"29 Nov 1983", postcode:"B12 8QN, Birmingham",
+    time:"11 min ago", caseType:"Fraud",
+    tags:[{t:"Score 534",c:"t-sc"},{t:"Classic card",c:"t-am"},{t:"CIFAS Cat.6",c:"t-fr"},{t:"CCJ present",c:"t-dg"}],
+    aiDot:"refer", aiLabel:"Refer to senior UW — multiple fraud indicators",
+    alertType:"fraud",
+    alertText:"CIFAS Category 6 marker: confirmed misuse of facility on a previous account (2022, now discharged). National Hunter: 2 hits from similar applications in the past 6 months. Address mismatch between application and bureau.",
+    app:{emp:"Self-employed",employer:"Marcus Webb Contracting",tenure:"4 yrs",gross:"£34,000 (declared)",net:"£1,850 / mo (est.)",product:"Classic credit card",aiLimit:"Refer — do not issue"},
+    bureau:{rows:[
+      ["Experian score","534 / 999","danger"],["Score band","Poor — adverse history","danger"],
+      ["CCJs (6 yr)","1 × CCJ 2022 (£1,240)","danger"],["Defaults (6 yr)","1 × satisfied 2021","warn"],
+      ["Arrears (12 mo)","None (current)","good"],["Hard searches (6 mo)","5","danger"],
+    ],flags:[{t:"✗ CCJ present 2022",c:"danger"},{t:"✗ Default (satisfied)",c:"warn"},{t:"⚠ 5 hard searches",c:"warn"},{t:"✓ No recent arrears",c:"ok"}]},
+    fraud:{rows:[
+      ["CIFAS marker","Cat. 6 — misuse (discharged)","danger"],["National Hunter hits","2 hits — similar apps","danger"],
+      ["Identity verified","Passed — doc check","good"],["Address consistency","3 addresses in 18 mo","warn"],
+      ["App vs bureau address","Mismatch — different PC","danger"],["Prior declined apps","2 declined (6 mo)","danger"],
+    ],flags:[{t:"✗ CIFAS Cat.6 marker",c:"fraud"},{t:"✗ 2 National Hunter hits",c:"fraud"},{t:"✗ Address mismatch",c:"danger"},{t:"✗ 2 prior declines",c:"danger"}]},
+    ob:{rows:[
+      ["Avg net credits (90d)","£2,100 / mo (variable)","warn"],["Salary consistency","Irregular — self-empl.","warn"],
+      ["Structuring pattern","None detected","good"],["Gambling activity","Minor — £45/mo avg","warn"],
+      ["Payday loan activity","None detected","good"],["NDI (post-commitments)","£410 / mo (est.)","warn"],
+      ["DTI ratio","48%","warn"],["Credit utilisation","N/A — no active revolving","good"],
+    ],flags:[{t:"⚠ Irregular income (SE)",c:"warn"},{t:"⚠ Minor gambling activity",c:"warn"},{t:"✓ No payday loan activity",c:"ok"}]},
+    narrative:"Marcus Webb is a 41-year-old self-employed contractor with a materially adverse credit history and multiple fraud indicators that require senior underwriter review — this case should not be decided by a junior analyst.\n\nFraud concerns: discharged CIFAS Category 6 marker (misuse of facility, 2022), two National Hunter hits from similar applications in the past 6 months, a postcode mismatch between the application address and the bureau address, and three address changes in 18 months. These collectively indicate elevated first-party fraud risk.\n\nBureau is also weak: CCJ from 2022 (£1,240, unpaid), a satisfied default from 2021, and an Experian score of 534. Open banking covers only 60 days (partial consent) with irregular self-employed income — insufficient for a confident NDI calculation. Escalate to senior underwriter with full fraud case file.",
+    ai:{
+      verdict:"Refer to senior underwriter",icon:"🔴",iCls:"refer",
+      sub:"Multiple fraud indicators — do not issue card",
+      conf:91,cCls:"high",
+      note:"CIFAS Cat.6, two Hunter hits, address mismatch, CCJ, and two prior declines. Card should not be issued. Case exceeds junior analyst authority — escalate with full fraud case file.",
+      nCls:"refer",
+      factors:[
+        {n:"CIFAS Cat.6 marker",w:95,fc:"ff-fr",dc:"fraud",dch:"!"},
+        {n:"Hunter hits ×2",w:88,fc:"ff-fr",dc:"fraud",dch:"!"},
+        {n:"Address mismatch",w:80,fc:"ff-fr",dc:"fraud",dch:"!"},
+        {n:"CCJ present",w:85,fc:"ff-pos",dc:"up",dch:"▲"},
+        {n:"Prior declines ×2",w:70,fc:"ff-pos",dc:"up",dch:"▲"},
+        {n:"Partial OB data",w:55,fc:"ff-pos",dc:"up",dch:"▲"},
+        {n:"No recent arrears",w:40,fc:"ff-neg",dc:"dn",dch:"▼"},
+      ],
+      similar:[
+        {m:"REF-2025-00102 · CIFAS Cat.6 + Hunter",o:"MLRO referral",c:"s-fraud"},
+        {m:"REF-2024-09934 · CCJ + addr mismatch",o:"Declined",c:"s-decline"},
+        {m:"REF-2024-09601 · 2 Hunter hits",o:"Declined",c:"s-decline"},
+      ],
+      hints:["CIFAS Cat 6","Hunter hits","Address mismatch","CCJ impact","Self-employed income"],
+      qa:{
+        "cifas":"A CIFAS Category 6 marker indicates confirmed misuse of a financial facility — typically using a product in a way that facilitated fraud or caused financial loss to a lender. Even though this marker is discharged (3 years old), it remains visible on the CIFAS database and is a significant fraud risk indicator. Most lenders decline at this stage or require senior sign-off with documented rationale.",
+        "hunter":"National Hunter is a shared application fraud database used by UK lenders. Two hits in 6 months indicates Marcus Webb has made very similar applications elsewhere that were flagged or declined. This pattern is consistent with sequential application fraud — applying to multiple lenders before any can share negative data across systems.",
+        "address":"The postcode on the application (B12) does not match the bureau address (B15) or the most recent electoral roll entry. Combined with three address changes in 18 months, this is a red flag for identity fraud or an attempt to create a synthetic credit profile. Proof of current address should be requested before any decision.",
+        "ccj":"The CCJ from 2022 for £1,240 remains unsatisfied on the bureau. An unsatisfied CCJ of this age, combined with the CIFAS marker, creates a pattern consistent with deliberate non-repayment rather than temporary financial hardship — a material distinction for credit risk assessment.",
+        "self-employed income":"Self-employed income verification requires at least two years of SA302 tax returns or HMRC tax year overviews. Only 60 days of open banking data is available — insufficient for a confident NDI calculation. Full income documentation must be obtained before any credit decision.",
+        "decline":"Given the fraud indicators, the correct path is escalation to senior underwriter and potentially the MLRO — not a standard decline. A routine decline notice could alert a fraudster that their pattern was detected. The card should not be issued under any circumstances until fraud review is complete. The case file must be retained for investigation.",
+      }
+    },
+    approveLabel:"Issue card — £4,000"
+  },
+
+  {
+    id:"REF-2025-00129", name:"Aoife Byrne", initials:"AB",
+    dob:"15 Feb 1995", postcode:"M4 1HQ, Manchester",
+    time:"18 min ago", caseType:"AML",
+    tags:[{t:"Score 548",c:"t-sc"},{t:"Classic card",c:"t-am"},{t:"PEP match",c:"t-fr"},{t:"Self-employed",c:"t-w"}],
+    aiDot:"cond", aiLabel:"On hold — PEP screening match, EDD required",
+    alertType:"aml",
+    alertText:"PEP (Politically Exposed Person) screening match — name and date of birth match an Irish public official on the UK sanctions / PEP database. Enhanced Due Diligence required under MLR 2017 before any approval can proceed.",
+    app:{emp:"Self-employed — consultant",employer:"Aoife Byrne Consulting Ltd",tenure:"2 yrs 3 mo",gross:"£41,000 (SA302)",net:"£2,280 / mo",product:"Classic credit card",aiLimit:"£1,500 (post-EDD)"},
+    bureau:{rows:[
+      ["Experian score","548 / 999","warn"],["Score band","Fair — limited history","warn"],
+      ["CCJs (6 yr)","None","good"],["Defaults (6 yr)","None","good"],
+      ["Arrears (12 mo)","None","good"],["Hard searches (6 mo)","2","good"],
+    ],flags:[{t:"✓ No CCJ / default",c:"ok"},{t:"✓ Electoral roll confirmed",c:"ok"},{t:"⚠ Limited UK credit history",c:"warn"}]},
+    fraud:{rows:[
+      ["CIFAS marker","None","good"],["National Hunter hits","0 matches","good"],
+      ["Identity verified","Passed — passport","good"],["PEP screening","Match — Irish official","danger"],
+      ["Sanctions screening","No sanctions match","good"],["Prior declined apps","None (12 mo)","good"],
+    ],flags:[{t:"✗ PEP match — EDD required",c:"fraud"},{t:"✓ No CIFAS / Hunter",c:"ok"},{t:"✓ No sanctions match",c:"ok"}]},
+    ob:{rows:[
+      ["Avg net credits (90d)","£2,190 / mo","good"],["Salary consistency","Variable — consulting","warn"],
+      ["Structuring pattern","None detected","good"],["Gambling activity","None detected","good"],
+      ["Payday loan activity","None detected","good"],["NDI (post-commitments)","£820 / mo","good"],
+      ["DTI ratio","28%","good"],["Credit utilisation","8% — 1 card","good"],
+    ],flags:[{t:"✓ Strong NDI £820",c:"ok"},{t:"✓ Low utilisation 8%",c:"ok"},{t:"⚠ Variable consulting income",c:"warn"}]},
+    narrative:"Aoife Byrne is a 30-year-old self-employed management consultant with a strong affordability profile and clean credit history. Experian score of 548 reflects a limited UK credit footprint — consistent with recent relocation or a different credit file jurisdiction.\n\nThe sole blocker is a PEP (Politically Exposed Person) screening match on name and date of birth against an Irish government official database. This requires Enhanced Due Diligence (EDD) under the Money Laundering Regulations 2017 before any credit can be extended. The match may be coincidental (common name/DOB combination), but must be formally assessed and documented.\n\nAffordability is excellent: NDI £820/month, DTI 28%, credit utilisation 8%, clean bureau, no CIFAS or National Hunter flags. Subject to EDD clearance, this is a strong card issue at the AI-assessed starting limit of £1,500.",
+    ai:{
+      verdict:"On hold — EDD required",icon:"⏸",iCls:"cond",
+      sub:"PEP match — cannot issue card without EDD clearance",
+      conf:88,cCls:"high",
+      note:"Affordability profile is strong. PEP match must be resolved via Enhanced Due Diligence before any card can be issued. Escalate to Compliance / MLRO. Expected EDD completion: 5–14 working days.",
+      nCls:"cond",
+      factors:[
+        {n:"PEP screening match",w:95,fc:"ff-fr",dc:"fraud",dch:"!"},
+        {n:"Limited UK history",w:45,fc:"ff-pos",dc:"up",dch:"▲"},
+        {n:"Variable income",w:32,fc:"ff-pos",dc:"up",dch:"▲"},
+        {n:"NDI buffer £820",w:88,fc:"ff-neg",dc:"dn",dch:"▼"},
+        {n:"Low utilisation 8%",w:92,fc:"ff-neg",dc:"dn",dch:"▼"},
+        {n:"No CIFAS / Hunter",w:92,fc:"ff-neg",dc:"dn",dch:"▼"},
+        {n:"No adverse history",w:90,fc:"ff-neg",dc:"dn",dch:"▼"},
+      ],
+      similar:[
+        {m:"REF-2025-00044 · PEP cleared — approved",o:"Approved £1,500",c:"s-approve"},
+        {m:"REF-2024-09714 · PEP — EDD failed",o:"Declined",c:"s-decline"},
+        {m:"REF-2024-08812 · PEP — consulting",o:"EDD hold 14 days",c:"s-refer"},
+      ],
+      hints:["PEP definition","EDD process","MLR 2017","Approve if cleared","Income verification"],
+      qa:{
+        "pep":"A Politically Exposed Person (PEP) is someone who holds or has held a prominent public function — politicians, senior officials, military officers, judiciary — and their close associates and family members. Under the Money Laundering Regulations 2017 (MLR 2017), firms must apply Enhanced Due Diligence to all PEP relationships regardless of perceived risk level.",
+        "edd":"Enhanced Due Diligence (EDD) requires: (1) senior management approval before opening the account, (2) establishing source of wealth and source of funds, (3) enhanced ongoing monitoring of the relationship. The EDD process typically takes 5–14 working days. The customer should be contacted to confirm whether they are or are associated with the identified PEP.",
+        "mlr 2017":"The Money Laundering, Terrorist Financing and Transfer of Funds Regulations 2017 implement the UK's AML framework post-Brexit. They require customer due diligence (CDD) for all customers and enhanced due diligence (EDD) for high-risk customers including PEPs. Failure to apply EDD is a regulatory offence with significant financial penalties.",
+        "approve":"Subject to EDD clearance, Aoife Byrne is a strong card issue at the AI-assessed starting limit of £1,500. NDI of £820/month, DTI 28%, credit utilisation 8%, clean bureau, no CIFAS or National Hunter flags. The PEP match is the only blocker — the underlying credit and affordability profile is excellent.",
+        "income":"Self-employed income verified via two years of SA302 tax returns (declared £41,000 p.a.) and corroborated by open banking data showing consistent net credits of £2,190/month. Variable consulting income pattern is within the range that FCA CONC allows for self-employed affordability assessments when multi-year tax evidence is available.",
+        "cleared":"If EDD concludes this is a false-positive match or the customer is confirmed as a non-PEP, return the case to queue. The AI-assessed starting limit of £1,500 is appropriate for issue. If confirmed as a PEP, senior management sign-off is required before any card can be issued — this is not a standard decline.",
+      }
+    },
+    approveLabel:"Issue card — £1,500 (post-EDD) ↗"
+  },
+
+  {
+    id:"REF-2025-00121", name:"David Okafor", initials:"DO",
+    dob:"03 Aug 1988", postcode:"SE15 4NG, London",
+    time:"24 min ago", caseType:"Bureau",
+    tags:[{t:"Score 577",c:"t-sc"},{t:"Classic card",c:"t-am"},{t:"OB verified",c:"t-ok"},{t:"Grey band",c:"t-w"}],
+    aiDot:"approve", aiLabel:"Issue card — AI limit £2,000",
+    alertType:null, alertText:null,
+    app:{emp:"Employed — full time",employer:"Transport for London",tenure:"5 yrs 2 mo",gross:"£32,000",net:"£2,050 / mo",product:"Classic credit card",aiLimit:"£2,000"},
+    bureau:{rows:[
+      ["Experian score","577 / 999","warn"],["Score band","Fair — grey band","warn"],
+      ["CCJs (6 yr)","None","good"],["Defaults (6 yr)","None","good"],
+      ["Arrears (12 mo)","None","good"],["Hard searches (6 mo)","3","warn"],
+    ],flags:[{t:"✓ No adverse history",c:"ok"},{t:"✓ Electoral roll 4 yrs",c:"ok"},{t:"⚠ 3 hard searches",c:"warn"},{t:"⚠ Util 67%",c:"warn"}]},
+    fraud:{rows:[
+      ["CIFAS marker","None","good"],["National Hunter hits","0 matches","good"],
+      ["Identity verified","Passed — KB + OB","good"],["Address consistency","Stable — 4 years","good"],
+      ["App vs bureau address","Match","good"],["Prior declined apps","None (12 mo)","good"],
+    ],flags:[{t:"✓ No CIFAS / Hunter",c:"ok"},{t:"✓ Stable address 4 yrs",c:"ok"},{t:"✓ Identity confirmed",c:"ok"}]},
+    ob:{rows:[
+      ["Avg net credits (90d)","£2,018 / mo","good"],["Salary consistency","Regular — monthly","good"],
+      ["Structuring pattern","None detected","good"],["Gambling activity","None detected","good"],
+      ["Payday loan activity","None detected","good"],["NDI (post-commitments)","£530 / mo","good"],
+      ["DTI ratio","42%","warn"],["Credit utilisation","67% — 3 cards","warn"],
+    ],flags:[{t:"✓ Salary verified OB",c:"ok"},{t:"✓ Adequate NDI £530",c:"ok"},{t:"⚠ Util 67% across 3 cards",c:"warn"}]},
+    narrative:"David Okafor is a 36-year-old Transport for London employee with five years of continuous stable employment and a clean credit history. Experian score of 577 sits in the grey band, driven primarily by elevated credit utilisation (67% across three existing cards) and three hard searches — not any adverse credit events.\n\nAll fraud and AML indicators are clear: no CIFAS markers, no National Hunter hits, stable South East London address for four years, and identity verification passed on all checks. Open banking confirms consistent monthly salary of £2,018 and healthy NDI of £530/month.\n\nAffordability supports a £2,500 limit on NDI grounds alone (£50/month = 9.4% of NDI), but elevated utilisation across existing cards warrants setting the starting limit at £2,000 under Consumer Duty principles. A £2,000 starting limit can be reviewed for an increase after 6 months of on-time payments.",
+    ai:{
+      verdict:"Approve at £2,000",icon:"✓",iCls:"approve",
+      sub:"AI starting limit: £2,000 — utilisation buffer applied",
+      conf:79,cCls:"high",
+      note:"Clean fraud and AML profile. NDI supports a higher limit but elevated utilisation (67%) warrants setting the starting limit at £2,000 under FCA Consumer Duty. Review for CLI after 6 months.",
+      nCls:"approve",
+      factors:[
+        {n:"Credit utilisation 67%",w:67,fc:"ff-pos",dc:"up",dch:"▲"},
+        {n:"DTI ratio (42%)",w:45,fc:"ff-pos",dc:"up",dch:"▲"},
+        {n:"Hard enquiries ×3",w:38,fc:"ff-pos",dc:"up",dch:"▲"},
+        {n:"Employment stability",w:90,fc:"ff-neg",dc:"dn",dch:"▼"},
+        {n:"NDI buffer £530",w:78,fc:"ff-neg",dc:"dn",dch:"▼"},
+        {n:"No CIFAS / Hunter",w:95,fc:"ff-neg",dc:"dn",dch:"▼"},
+        {n:"Clean bureau history",w:90,fc:"ff-neg",dc:"dn",dch:"▼"},
+      ],
+      similar:[
+        {m:"REF-2025-00088 · TfL employ. · 571",o:"Approved £2,000",c:"s-approve"},
+        {m:"REF-2024-09922 · 580 · Util 65%",o:"Approved £1,500",c:"s-approve"},
+        {m:"REF-2024-09643 · 574 · Clean file",o:"Approved £2,000",c:"s-approve"},
+      ],
+      hints:["Why not £2,500","Utilisation impact","Consumer Duty","DTI calculation","Employment security"],
+      qa:{
+        "why not":"The AI-assessed starting limit is £2,000, not the maximum affordability-supported £2,500. In credit card acquisition the lender determines the starting limit based on the full affordability picture. Although NDI supports £2,500 in isolation, elevated utilisation of 67% across three existing cards raises Consumer Duty concerns — setting the starting limit at £2,000 with a CLI review pathway after 6 months is the appropriate outcome.",
+        "utilisation":"67% utilisation across three existing cards (Barclaycard, Santander, Amazon) indicates the customer is actively using a significant portion of available revolving credit. High utilisation is associated with increased default probability at the portfolio level. A modest limit reduction is a proportionate and defensible Consumer Duty response.",
+        "consumer duty":"FCA Consumer Duty (PS22/9) requires firms to ensure their products deliver good outcomes for customers in their specific financial circumstances. Approving a limit that maximises exposure without considering the customer's broader credit obligations could breach the customer best-interests outcome — even if the limit is technically affordable on a standalone NDI basis.",
+        "dti":"DTI (Debt-to-Income) ratio of 42% is calculated as total monthly minimum payments across all credit facilities divided by gross monthly income. Approving at £2,500 would push DTI to approximately 45% — within policy but elevated for a near-prime customer.",
+        "employment":"Transport for London is a public sector employer offering stable, pensionable employment. Five years of continuous tenure with consistent salary credits (open banking verified at £2,018/month) represents very low income volatility risk. Employment stability is the strongest positive factor in this case.",
+        "ndi":"NDI of £530/month is calculated after tax, NI, existing minimum payments across three cards (total £65/month), estimated rent of £900/month from open banking, and essential spend. At the AI-assessed starting limit of £2,000, new minimum repayment is £40/month — reducing NDI to £490. This remains within FCA CONC stress tolerance.",
+      }
+    },
+    approveLabel:"Issue card — £2,000 ↗"
+  }
+];
+
+let active = null;
+
+/* ── BUILD QUEUE ── */
+function buildQueue() {
+  const list = document.getElementById("queueList");
+  CASES.forEach((c, i) => {
+    const el = document.createElement("div");
+    el.className = "q-item" + (i === 0 ? " active" : "");
+    el.dataset.idx = i;
+    el.onclick = () => loadCase(i);
+    el.innerHTML =
+      `<div class="q-top"><span class="q-name">${c.name}</span><span class="q-time">${c.time}</span></div>` +
+      `<div class="q-tags">${c.tags.map(t=>`<span class="tag ${t.c}">${t.t}</span>`).join("")}</div>` +
+      `<div class="q-ai"><span class="ai-dot ${c.aiDot}"></span>${c.aiLabel}</div>`;
+    list.appendChild(el);
+  });
+}
+
+/* ── LOAD CASE ── */
+function loadCase(idx) {
+  active = CASES[idx];
+  document.querySelectorAll(".q-item").forEach(el => {
+    el.classList.toggle("active", +el.dataset.idx === idx);
+  });
+  renderDetail();
+  renderAI();
+  document.getElementById("decBar").classList.remove("hidden");
+  document.getElementById("overNote").classList.remove("hidden");
+  document.getElementById("btnAI").textContent = active.approveLabel;
+}
+
+/* ── RENDER DETAIL ── */
+function renderDetail() {
+  const c = active;
+  let html = "";
+
+  /* Alert banner */
+  if (c.alertType) {
+    const icon = c.alertType === "fraud" ? "🔴" : "🟡";
+    html += `<div class="alert-banner ${c.alertType}"><span class="alert-icon">${icon}</span><span>${c.alertText}</span></div>`;
+  }
+
+  /* Applicant card */
+  html += `
+  <div class="card">
+    <div class="card-hdr">
+      <span class="card-title"><span class="c-icon">👤</span>Applicant</span>
+      <span class="card-meta">${c.id} &nbsp;·&nbsp; Case type: <strong>${c.caseType}</strong></span>
+    </div>
+    <div class="card-body">
+      <div class="app-row">
+        <div class="av">${c.initials}</div>
+        <div>
+          <div class="av-name">${c.name}</div>
+          <div class="av-sub">DOB: ${c.dob} &nbsp;·&nbsp; ${c.postcode}</div>
+        </div>
+      </div>
+      <div class="dgrid">
+        ${dCell("Employment",c.app.emp,"")}
+        ${dCell("Employer",c.app.employer,"")}
+        ${dCell("Tenure",c.app.tenure,"")}
+        ${dCell("Gross annual salary",c.app.gross,"")}
+        ${dCell("Net monthly income",c.app.net,"")}
+        ${dCell("Card product",c.app.product,"")}
+        ${dCell("AI suggested limit",c.app.aiLimit,"good")}
+      </div>
+    </div>
+  </div>`;
+
+  /* Three-source card */
+  html += `
+  <div class="card">
+    <div class="card-hdr">
+      <span class="card-title"><span class="c-icon">📊</span>Data sources</span>
+      <span class="card-meta">Bureau · Fraud &amp; AML · Open Banking</span>
+    </div>
+    <div class="src-tabs">
+      <div class="src-tab active" onclick="switchTab(this,'bureau')">📋 Bureau (CRA)</div>
+      <div class="src-tab" onclick="switchTab(this,'fraud')">🛡 Fraud &amp; AML</div>
+      <div class="src-tab" onclick="switchTab(this,'ob')">🏦 Open Banking</div>
+    </div>
+    ${tabPanel("bureau", c.bureau, true)}
+    ${tabPanel("fraud", c.fraud, false)}
+    ${tabPanel("ob", c.ob, false)}
+  </div>`;
+
+  /* Narrative card */
+  html += `
+  <div class="card">
+    <div class="card-hdr">
+      <span class="card-title"><span class="c-icon">✦</span>AI credit narrative</span>
+      <span class="card-meta">Generated in &lt;30s · RAG over policy docs + past cases</span>
+    </div>
+    <div class="card-body">
+      <div class="narrative">${c.narrative.replace(/\n\n/g,"<br><br>")}</div>
+    </div>
+  </div>`;
+
+  const scroll = document.getElementById("detailScroll");
+  scroll.innerHTML = html;
+  scroll.scrollTop = 0;
+}
+
+function dCell(label, value, cls) {
+  return `<div class="dcell"><div class="dcell-l">${label}</div><div class="dcell-v ${cls}">${value}</div></div>`;
+}
+
+function tabPanel(id, data, isActive) {
+  const half = Math.ceil(data.rows.length / 2);
+  const left = data.rows.slice(0, half);
+  const right = data.rows.slice(half);
+  const rowsHtml = rows => rows.map(r =>
+    `<div class="sig-row"><span class="sig-l">${r[0]}</span><span class="sig-v ${r[2]}">${r[1]}</span></div>`
+  ).join("");
+  const flags = data.flags.map(f => `<span class="fc ${f.c}">${f.t}</span>`).join("");
+  return `
+    <div class="src-panel${isActive?" active":""}" id="tab-${id}">
+      <div class="sig-grid">
+        <div class="sig-col">${rowsHtml(left)}</div>
+        <div class="sig-col">${rowsHtml(right)}</div>
+      </div>
+      <div class="flag-strip">${flags}</div>
+    </div>`;
+}
+
+function switchTab(el, id) {
+  const card = el.closest(".card");
+  card.querySelectorAll(".src-tab").forEach(t => t.classList.remove("active"));
+  card.querySelectorAll(".src-panel").forEach(p => p.classList.remove("active"));
+  el.classList.add("active");
+  card.querySelector(`#tab-${id}`).classList.add("active");
+}
+
+/* ── RENDER AI ── */
+function renderAI() {
+  const c = active; const a = c.ai;
+
+  const factors = a.factors.map(f =>
+    `<div class="f-row">
+      <span class="f-name">${f.n}</span>
+      <div class="f-track"><div class="${f.fc}" style="width:${f.w}%"></div></div>
+      <span class="f-dir ${f.dc}">${f.dch}</span>
+    </div>`).join("");
+
+  const similar = a.similar.map(s =>
+    `<div class="sim-row">
+      <span class="sim-meta">${s.m}</span>
+      <span class="sim-out ${s.c}">${s.o}</span>
+    </div>`).join("");
+
+  const hints = a.hints.map(h =>
+    `<span class="hint" onclick="askHint('${h}')">${h}</span>`).join("");
+
+  document.getElementById("aiPanel").innerHTML = `
+    <div class="panel-hdr">
+      <span class="panel-hdr-title">✦ AI recommendation</span>
+    </div>
+
+    <div class="rec-sec">
+      <div class="eyebrow">AI verdict</div>
+      <div class="rec-row">
+        <div class="rec-icon ${a.iCls}">${a.icon}</div>
+        <div>
+          <div class="rec-verdict">${a.verdict}</div>
+          <div class="rec-sub">${a.sub}</div>
+        </div>
+      </div>
+      <div class="conf-row">
+        <span class="conf-lbl">Confidence</span>
+        <div class="conf-track"><div class="conf-fill ${a.cCls}" style="width:${a.conf}%"></div></div>
+        <span class="conf-pct ${a.cCls}">${a.conf}%</span>
+      </div>
+      <div class="rec-note ${a.nCls}">${a.note}</div>
+    </div>
+
+    <div class="factors-sec">
+      <div class="sec-title">Key risk factors</div>
+      ${factors}
+      <div class="f-legend">▲ risk-increasing &nbsp;·&nbsp; ▼ risk-reducing &nbsp;·&nbsp; ! fraud / AML</div>
+    </div>
+
+    <div class="similar-sec">
+      <div class="sec-title">Similar past cases</div>
+      ${similar}
+    </div>
+
+    <div class="chat-sec">
+      <div class="sec-title" style="margin-bottom:8px">Ask AI about this case</div>
+      <div class="chat-messages" id="chatMsgs">
+        <div class="bubble ai">I've analysed ${c.name.split(" ")[0]}'s case across all three data sources. Ask me anything about the bureau data, fraud / AML indicators, affordability, or recommendation rationale.</div>
+      </div>
+      <div class="chat-input-row">
+        <input class="chat-inp" id="chatInp" type="text" placeholder="Ask about this case…" onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="chat-send" onclick="sendChat()">Ask ↗</button>
+      </div>
+      <div class="chat-hints">${hints}</div>
+    </div>`;
+}
+
+function askHint(h) {
+  document.getElementById("chatInp").value = h;
+  sendChat();
+}
+
+function sendChat() {
+  const inp = document.getElementById("chatInp");
+  const q = inp.value.trim();
+  if (!q) return;
+  const msgs = document.getElementById("chatMsgs");
+
+  const uB = document.createElement("div");
+  uB.className = "bubble uw"; uB.textContent = q;
+  msgs.appendChild(uB);
+
+  const th = document.createElement("div");
+  th.className = "thinking"; th.textContent = "Analysing case data…";
+  msgs.appendChild(th);
+  msgs.scrollTop = msgs.scrollHeight;
+  inp.value = "";
+
+  setTimeout(() => {
+    msgs.removeChild(th);
+    const lq = q.toLowerCase();
+    const qa = active.ai.qa;
+    let ans = "I can answer questions specific to this case. Use the quick-ask chips below, or ask about bureau data, fraud / AML indicators, affordability, or the recommendation rationale.";
+    for (const [k, v] of Object.entries(qa)) {
+      if (lq.includes(k.toLowerCase())) { ans = v; break; }
+    }
+    const aB = document.createElement("div");
+    aB.className = "bubble ai"; aB.textContent = ans;
+    msgs.appendChild(aB);
+    msgs.scrollTop = msgs.scrollHeight;
+  }, 850);
+}
+
+function decide(type) {
+  const labels = {
+    ai:      `✓ Decision logged: ${active.approveLabel.replace(" ↗","")} — AI recommendation followed`,
+    override:`⚠ Override logged: Limit override entered — override reason required`,
+    decline: `✓ Decision logged: Declined — CONC-compliant notice will be generated`,
+    refer:   `↑ Escalated to senior underwriter queue`
+  };
+  showToast(labels[type]);
+}
+
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 3500);
+}
+
+/* ── INIT ── */
+buildQueue();
+loadCase(0);
+</script>
+
+<!-- ── PAGE TAB SWITCHING ── -->
+<script>
+function switchPageTab(name) {
+  ['workbench','flow'].forEach(t => {
+    document.getElementById('ptab-'+t).classList.toggle('active', t===name);
+    document.getElementById('pane-'+t).classList.toggle('active', t===name);
+  });
+  if(name==='flow' && !fcInitDone) fcInit();
+}
+</script>
+
+<!-- ── FLOW DIAGRAM ENGINE ── -->
+<script>
+let fcInitDone = false;
+let fcPlaying = true;
+let fcStepIdx = 0;
+let fcAnimT = 0;
+let fcLastTs = null;
+let fcStepDur = 1300;
+let fcRafId = null;
+
+const FC = {
+  p:'#4A1F6E', pMid:'#6B3494', pLt:'#8B4FBB', pPale:'#EDE5F5', pTint:'#F7F2FC',
+  teal:'#0F6E56', tealLt:'#E1F5EE', tealMid:'#1D9E75',
+  amber:'#854F0B', amberLt:'#FEF5E4', amberMid:'#BA7517',
+  blue:'#185FA5', blueLt:'#E6F1FB',
+  green:'#3B6D11', greenLt:'#EAF3DE', greenMid:'#639922',
+  red:'#A32D2D', redLt:'#FCEBEB',
+  ink:'#1A1025', inkLt:'#7B6893', rule:'rgba(74,31,110,0.12)', white:'#FFFFFF'
+};
+
+const W=980, H=620;
+
+const FN = {
+  los:    {x:30, y:68,  w:130,h:42, label:'LOS / originations', sub:'Refer flag',         fill:FC.pTint,   bdr:FC.p,       tc:FC.p},
+  cra:    {x:30, y:128, w:130,h:42, label:'CRA APIs',           sub:'Experian/EQ/TU',     fill:FC.pTint,   bdr:FC.p,       tc:FC.p},
+  cifas:  {x:30, y:188, w:130,h:42, label:'CIFAS / Hunter',     sub:'Fraud & AML data',   fill:FC.pTint,   bdr:FC.p,       tc:FC.p},
+  ob:     {x:30, y:248, w:130,h:42, label:'Open banking',       sub:'Income & spend',     fill:FC.pTint,   bdr:FC.p,       tc:FC.p},
+  docs:   {x:30, y:308, w:130,h:42, label:'Document store',     sub:'Payslips, P60s',     fill:FC.pTint,   bdr:FC.p,       tc:FC.p},
+
+  queue:  {x:210,y:148, w:130,h:42, label:'Message queue',      sub:'Case assembly',      fill:FC.tealLt,  bdr:FC.teal,    tc:FC.teal},
+  parser: {x:210,y:228, w:130,h:42, label:'Doc parser',         sub:'OCR + LLM extract',  fill:FC.tealLt,  bdr:FC.teal,    tc:FC.teal},
+
+  afford: {x:395,y:90,  w:140,h:42, label:'Affordability engine', sub:'NDI · DTI · stress',fill:FC.tealLt, bdr:FC.teal,    tc:FC.teal},
+  fraud:  {x:395,y:158, w:140,h:42, label:'Fraud / AML engine', sub:'CIFAS · Hunter · PEP',fill:FC.tealLt, bdr:FC.teal,    tc:FC.teal},
+  rag:    {x:395,y:226, w:140,h:42, label:'RAG policy engine',  sub:'Policy + past cases', fill:FC.tealLt, bdr:FC.teal,    tc:FC.teal},
+  score:  {x:395,y:294, w:140,h:42, label:'Scoring model',      sub:'Limit + verdict',    fill:FC.tealLt,  bdr:FC.teal,    tc:FC.teal},
+
+  llm:    {x:210,y:390, w:325,h:46, label:'LLM — narrative & reasoning engine', sub:'Claude API · synthesises all signals into credit assessment', fill:FC.tealLt, bdr:FC.tealMid, tc:FC.teal},
+
+  memo:   {x:210,y:484, w:100,h:42, label:'Credit memo',        sub:'Draft + rationale',  fill:FC.amberLt, bdr:FC.amber,   tc:FC.amber},
+  rec:    {x:322,y:484, w:100,h:42, label:'AI recommendation',  sub:'Verdict + confidence',fill:FC.amberLt, bdr:FC.amber,  tc:FC.amber},
+  route:  {x:434,y:484, w:100,h:42, label:'Case routing',       sub:'Junior / senior UW', fill:FC.amberLt, bdr:FC.amber,   tc:FC.amber},
+
+  audit:  {x:600,y:110, w:130,h:42, label:'Audit log',          sub:'AI steps · overrides',fill:FC.amberLt, bdr:FC.amber,  tc:FC.amber},
+  vector: {x:600,y:170, w:130,h:42, label:'Vector store',       sub:'Policy embeddings',  fill:FC.amberLt, bdr:FC.amber,   tc:FC.amber},
+
+  uw:     {x:600,y:340, w:130,h:42, label:'Underwriter UI',     sub:'Workbench — 3 sources',fill:FC.blueLt, bdr:FC.blue,   tc:FC.blue},
+  decide: {x:600,y:400, w:130,h:42, label:'Decision',           sub:'Issue · decline · refer', fill:FC.greenLt, bdr:FC.green, tc:FC.green},
+  fbk:    {x:600,y:460, w:130,h:42, label:'Feedback loop',      sub:'Retraining pipeline', fill:FC.greenLt, bdr:FC.green,  tc:FC.green},
+};
+
+function nCx(n){return n.x+n.w/2}
+function nCy(n){return n.y+n.h/2}
+function nR(n){return n.x+n.w}
+function nB(n){return n.y+n.h}
+
+const FS = [
+  {id:1, label:'Application received — refer flag raised by scorecard',
+   active:['los'], packets:[], arrows:[]},
+  {id:2, label:'Case assembled — parallel data pull triggered across all sources',
+   active:['los','queue'],
+   packets:[{x:nR(FN.los),y:nCy(FN.los),tx:FN.queue.x,ty:nCy(FN.queue),col:FC.p}],
+   arrows:[[nR(FN.los),nCy(FN.los),FN.queue.x,nCy(FN.queue),FC.p,false]]},
+  {id:3, label:'Bureau, fraud & open banking data pulled simultaneously',
+   active:['cra','cifas','ob','queue'],
+   packets:[
+     {x:nR(FN.cra),  y:nCy(FN.cra),  tx:FN.queue.x, ty:nCy(FN.queue), col:FC.p},
+     {x:nR(FN.cifas),y:nCy(FN.cifas),tx:FN.queue.x, ty:nCy(FN.queue), col:FC.red},
+     {x:nR(FN.ob),   y:nCy(FN.ob),   tx:FN.queue.x, ty:nCy(FN.queue), col:FC.p},
+   ],
+   arrows:[
+     [nR(FN.cra),  nCy(FN.cra),  FN.queue.x, nCy(FN.queue), FC.p,   false],
+     [nR(FN.cifas),nCy(FN.cifas),FN.queue.x, nCy(FN.queue), FC.red, false],
+     [nR(FN.ob),   nCy(FN.ob),   FN.queue.x, nCy(FN.queue), FC.p,   false],
+   ]},
+  {id:4, label:'Payslips & P60s parsed — structured fields extracted via OCR + LLM',
+   active:['docs','parser'],
+   packets:[{x:nR(FN.docs),y:nCy(FN.docs),tx:FN.parser.x,ty:nCy(FN.parser),col:FC.p}],
+   arrows:[[nR(FN.docs),nCy(FN.docs),FN.parser.x,nCy(FN.parser),FC.p,false]]},
+  {id:5, label:'Affordability engine — NDI, DTI & stress-test calculated (FCA CONC)',
+   active:['queue','afford'],
+   packets:[{x:nR(FN.queue),y:nCy(FN.queue),tx:FN.afford.x,ty:nCy(FN.afford),col:FC.tealMid}],
+   arrows:[[nR(FN.queue),nCy(FN.queue),FN.afford.x,nCy(FN.afford),FC.teal,false]]},
+  {id:6, label:'Fraud / AML engine — CIFAS, National Hunter & PEP screening run',
+   active:['queue','fraud'],
+   packets:[{x:nR(FN.queue),y:nCy(FN.queue),tx:FN.fraud.x,ty:nCy(FN.fraud),col:FC.red}],
+   arrows:[[nR(FN.queue),nCy(FN.queue),FN.fraud.x,nCy(FN.fraud),FC.red,false]]},
+  {id:7, label:'RAG engine retrieves relevant policy rules & similar past cases',
+   active:['rag','vector'],
+   packets:[{x:FN.vector.x,y:nCy(FN.vector),tx:nR(FN.rag),ty:nCy(FN.rag),col:FC.amberMid}],
+   arrows:[
+     [nR(FN.queue), nCy(FN.queue), FN.rag.x,   nCy(FN.rag),    FC.teal,  false],
+     [FN.vector.x,  nCy(FN.vector),nR(FN.rag),  nCy(FN.rag),    FC.amber, true],
+   ]},
+  {id:8, label:'Scoring model produces AI credit limit recommendation',
+   active:['afford','fraud','rag','score'],
+   packets:[
+     {x:nCx(FN.afford),y:nB(FN.afford),tx:nCx(FN.score),ty:FN.score.y,col:FC.tealMid},
+     {x:nCx(FN.rag),   y:nB(FN.rag),   tx:nCx(FN.score),ty:FN.score.y,col:FC.tealMid},
+   ],
+   arrows:[
+     [nCx(FN.afford),nB(FN.afford),nCx(FN.score),FN.score.y,FC.teal,false],
+     [nCx(FN.rag),   nB(FN.rag),   nCx(FN.score),FN.score.y,FC.teal,false],
+   ]},
+  {id:9, label:'LLM synthesises all signals — credit narrative drafted (Claude API)',
+   active:['score','parser','llm','audit'],
+   packets:[
+     {x:nCx(FN.score), y:nB(FN.score), tx:nCx(FN.llm),    ty:FN.llm.y, col:FC.tealMid},
+     {x:nCx(FN.parser),y:nB(FN.parser),tx:nCx(FN.llm)-60,  ty:FN.llm.y, col:FC.tealMid},
+   ],
+   arrows:[
+     [nCx(FN.score), nB(FN.score), nCx(FN.llm),    FN.llm.y, FC.teal,  false],
+     [nCx(FN.parser),nB(FN.parser),nCx(FN.llm)-60,  FN.llm.y, FC.teal,  false],
+     [FN.audit.x,    nCy(FN.audit),nR(FN.rag),       nCy(FN.rag), FC.amber, true],
+   ]},
+  {id:10, label:'AI outputs generated — credit memo, recommendation & routing decision',
+   active:['llm','memo','rec','route'],
+   packets:[
+     {x:nCx(FN.llm)-80,y:nB(FN.llm),tx:nCx(FN.memo), ty:FN.memo.y,col:FC.amberMid},
+     {x:nCx(FN.llm),   y:nB(FN.llm),tx:nCx(FN.rec),  ty:FN.rec.y, col:FC.amberMid},
+     {x:nCx(FN.llm)+80,y:nB(FN.llm),tx:nCx(FN.route),ty:FN.route.y,col:FC.amberMid},
+   ],
+   arrows:[
+     [nCx(FN.llm)-80,nB(FN.llm),nCx(FN.memo), FN.memo.y, FC.amber,false],
+     [nCx(FN.llm),   nB(FN.llm),nCx(FN.rec),  FN.rec.y,  FC.amber,false],
+     [nCx(FN.llm)+80,nB(FN.llm),nCx(FN.route),FN.route.y,FC.amber,false],
+   ]},
+  {id:11, label:'Underwriter receives pre-built case — reviews AI memo on workbench',
+   active:['memo','rec','route','uw'],
+   packets:[{x:nCx(FN.rec),y:nCy(FN.rec),tx:FN.uw.x,ty:nCy(FN.uw),col:FC.blue}],
+   arrows:[
+     [nR(FN.memo), nCy(FN.memo), FN.uw.x, nCy(FN.uw), FC.blue, false],
+     [nR(FN.rec),  nCy(FN.rec),  FN.uw.x, nCy(FN.uw), FC.blue, false],
+     [nR(FN.route),nCy(FN.route),FN.uw.x, nCy(FN.uw), FC.blue, false],
+   ]},
+  {id:12, label:'Decision logged — outcome feeds back to retrain model & update policy',
+   active:['uw','decide','fbk','audit'],
+   packets:[
+     {x:nCx(FN.uw),    y:nB(FN.uw),    tx:nCx(FN.decide),ty:FN.decide.y,col:FC.greenMid},
+     {x:nCx(FN.decide),y:nB(FN.decide),tx:nCx(FN.fbk),   ty:FN.fbk.y,  col:FC.greenMid},
+   ],
+   arrows:[
+     [nCx(FN.uw),    nB(FN.uw),    nCx(FN.decide),FN.decide.y,FC.green,false],
+     [nCx(FN.decide),nB(FN.decide),nCx(FN.fbk),   FN.fbk.y,  FC.green,false],
+     [FN.fbk.x, nCy(FN.fbk), FN.vector.x+FN.vector.w/2, nB(FN.vector), FC.green, true],
+   ]},
+];
+
+function fcInit() {
+  fcInitDone = true;
+  const canvas = document.getElementById('fcCanvas');
+  canvas.width = W;
+  canvas.height = H;
+  canvas.style.width = '100%';
+  canvas.style.height = 'auto';
+  fcRafId = requestAnimationFrame(fcDraw);
+}
+
+function fcRR(cx,x,y,w,h,r,fill,stroke,sw=0.8){
+  cx.beginPath();
+  cx.moveTo(x+r,y);cx.lineTo(x+w-r,y);cx.arcTo(x+w,y,x+w,y+r,r);
+  cx.lineTo(x+w,y+h-r);cx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  cx.lineTo(x+r,y+h);cx.arcTo(x,y+h,x,y+h-r,r);
+  cx.lineTo(x,y+r);cx.arcTo(x,y,x+r,y,r);cx.closePath();
+  if(fill){cx.fillStyle=fill;cx.fill()}
+  if(stroke){cx.strokeStyle=stroke;cx.lineWidth=sw;cx.stroke()}
+}
+
+function fcTxt(cx,text,x,y,size,color,weight,align='center'){
+  cx.font=`${weight||'normal'} ${size}px 'DM Sans',sans-serif`;
+  cx.fillStyle=color;cx.textAlign=align;cx.textBaseline='middle';
+  cx.fillText(text,x,y);
+}
+
+function fcArrow(cx,x1,y1,x2,y2,color,dashed,thick=1.8){
+  cx.save();cx.strokeStyle=color;cx.lineWidth=thick;cx.lineCap='round';
+  if(dashed)cx.setLineDash([5,4]);
+  cx.beginPath();cx.moveTo(x1,y1);cx.lineTo(x2,y2);cx.stroke();
+  cx.setLineDash([]);
+  const a=Math.atan2(y2-y1,x2-x1),s=8;
+  cx.fillStyle=color;cx.beginPath();
+  cx.moveTo(x2,y2);
+  cx.lineTo(x2-s*Math.cos(a-.4),y2-s*Math.sin(a-.4));
+  cx.lineTo(x2-s*Math.cos(a+.4),y2-s*Math.sin(a+.4));
+  cx.closePath();cx.fill();cx.restore();
+}
+
+function fcPacket(cx,x,y,col,r=8){
+  cx.beginPath();cx.arc(x,y,r,0,Math.PI*2);
+  cx.fillStyle=col;cx.fill();
+  cx.strokeStyle='rgba(255,255,255,0.7)';cx.lineWidth=1.8;cx.stroke();
+}
+
+function fcPulse(cx,x,y,r,col,alpha){
+  cx.beginPath();cx.arc(x,y,r,0,Math.PI*2);
+  cx.strokeStyle=col;cx.lineWidth=1.5;cx.globalAlpha=alpha;cx.stroke();
+  cx.globalAlpha=1;
+}
+
+function lerp(a,b,t){return a+(b-a)*t}
+
+function fcDrawStaticBg(cx,ts){
+  cx.globalAlpha=0.1;
+  const sa=[
+    [nR(FN.los),   nCy(FN.los),   FN.queue.x,  nCy(FN.queue), FC.p,   false],
+    [nR(FN.cra),   nCy(FN.cra),   FN.queue.x,  nCy(FN.queue), FC.p,   false],
+    [nR(FN.cifas), nCy(FN.cifas), FN.queue.x,  nCy(FN.queue), FC.p,   false],
+    [nR(FN.ob),    nCy(FN.ob),    FN.queue.x,  nCy(FN.queue), FC.p,   false],
+    [nR(FN.docs),  nCy(FN.docs),  FN.parser.x, nCy(FN.parser),FC.p,   false],
+    [nR(FN.queue), nCy(FN.queue), FN.afford.x, nCy(FN.afford),FC.teal,false],
+    [nR(FN.queue), nCy(FN.queue), FN.fraud.x,  nCy(FN.fraud), FC.red, false],
+    [nR(FN.queue), nCy(FN.queue), FN.rag.x,    nCy(FN.rag),   FC.teal,false],
+    [nR(FN.queue), nCy(FN.queue), FN.score.x,  nCy(FN.score), FC.teal,false],
+    [nCx(FN.afford),nB(FN.afford),nCx(FN.llm), FN.llm.y,      FC.teal,false],
+    [nCx(FN.fraud), nB(FN.fraud), nCx(FN.llm), FN.llm.y,      FC.teal,false],
+    [nCx(FN.rag),   nB(FN.rag),   nCx(FN.llm), FN.llm.y,      FC.teal,false],
+    [nCx(FN.score), nB(FN.score), nCx(FN.llm), FN.llm.y,      FC.teal,false],
+    [nCx(FN.parser),nB(FN.parser),nCx(FN.llm), FN.llm.y,      FC.teal,false],
+    [nCx(FN.llm)-80,nB(FN.llm),  nCx(FN.memo),FN.memo.y,     FC.amber,false],
+    [nCx(FN.llm),   nB(FN.llm),  nCx(FN.rec), FN.rec.y,      FC.amber,false],
+    [nCx(FN.llm)+80,nB(FN.llm),  nCx(FN.route),FN.route.y,   FC.amber,false],
+    [nR(FN.memo),  nCy(FN.memo), FN.uw.x,     nCy(FN.uw),    FC.blue, false],
+    [nR(FN.rec),   nCy(FN.rec),  FN.uw.x,     nCy(FN.uw),    FC.blue, false],
+    [nR(FN.route), nCy(FN.route),FN.uw.x,     nCy(FN.uw),    FC.blue, false],
+    [nCx(FN.uw),   nB(FN.uw),   nCx(FN.decide),FN.decide.y,  FC.green,false],
+    [nCx(FN.decide),nB(FN.decide),nCx(FN.fbk), FN.fbk.y,     FC.green,false],
+    [FN.audit.x,   nCy(FN.audit),nR(FN.rag),   nCy(FN.rag),  FC.amber,true],
+    [FN.vector.x,  nCy(FN.vector),nR(FN.rag),  nCy(FN.rag),  FC.amber,true],
+    [FN.fbk.x,     nCy(FN.fbk), FN.vector.x+FN.vector.w/2, nB(FN.vector), FC.green,true],
+  ];
+  sa.forEach(([x1,y1,x2,y2,c,d])=>{
+    cx.save();cx.strokeStyle=c;cx.lineWidth=0.8;
+    if(d)cx.setLineDash([4,4]);
+    cx.beginPath();cx.moveTo(x1,y1);cx.lineTo(x2,y2);cx.stroke();
+    cx.setLineDash([]);cx.restore();
+  });
+  cx.globalAlpha=1;
+}
+
+function fcDrawLaneBadges(cx){
+  const lanes=[
+    {x:95,   label:'SOURCE SYSTEMS', col:FC.p},
+    {x:275,  label:'INGESTION',      col:FC.teal},
+    {x:465,  label:'AI PIPELINE',    col:FC.teal},
+    {x:665,  label:'OUTPUT & UW',    col:FC.blue},
+  ];
+  lanes.forEach(l=>{
+    cx.fillStyle='rgba(74,31,110,0.07)';
+    cx.beginPath();
+    cx.roundRect(l.x-65,8,130,18,4);
+    cx.fill();
+    cx.font='bold 9px "DM Sans",sans-serif';
+    cx.fillStyle=l.col;cx.textAlign='center';cx.textBaseline='middle';
+    cx.fillText(l.label,l.x,17);
+  });
+}
+
+function fcDrawNode(cx,n,isActive){
+  const a=isActive?1:0.28;
+  cx.globalAlpha=a;
+  fcRR(cx,n.x,n.y,n.w,n.h,8,isActive?n.fill:'#F2F0F5',isActive?n.bdr:'#C8C4D0',isActive?1.2:0.5);
+  if(isActive){
+    cx.globalAlpha=0.25;
+    fcRR(cx,n.x+1,n.y+1,n.w-2,n.h-2,7,null,n.bdr,2.5);
+  }
+  cx.globalAlpha=a;
+  fcTxt(cx,n.label,nCx(n),n.y+14,10.5,isActive?n.tc:'#AAAAAA','500');
+  fcTxt(cx,n.sub,  nCx(n),n.y+28,9,  isActive?FC.inkLt:'#CCCCCC','normal');
+  cx.globalAlpha=1;
+}
+
+function fcDraw(ts){
+  if(fcLastTs===null) fcLastTs=ts;
+  const dt=(ts-fcLastTs)/1000;
+  fcLastTs=ts;
+
+  if(fcPlaying){
+    fcAnimT+=dt/(fcStepDur/1000);
+    if(fcAnimT>=1){fcAnimT=0;fcStepIdx=(fcStepIdx+1)%FS.length;fcUpdateLabel()}
+  }
+
+  const canvas=document.getElementById('fcCanvas');
+  if(!canvas){return}
+  const cx=canvas.getContext('2d');
+  cx.clearRect(0,0,W,H);
+
+  fcDrawLaneBadges(cx);
+  fcDrawStaticBg(cx,ts);
+
+  const step=FS[fcStepIdx];
+  const active=step.active||[];
+
+  Object.entries(FN).forEach(([k,n])=>fcDrawNode(cx,n,active.includes(k)));
+
+  const t=fcPlaying?fcAnimT:1;
+
+  (step.arrows||[]).forEach(([x1,y1,x2,y2,c,d])=>{
+    cx.save();cx.globalAlpha=Math.min(t*2.5,1);
+    cx.strokeStyle=c;cx.lineWidth=2;
+    if(d)cx.setLineDash([5,4]);
+    const ex=lerp(x1,x2,t),ey=lerp(y1,y2,t);
+    cx.beginPath();cx.moveTo(x1,y1);cx.lineTo(ex,ey);cx.stroke();
+    cx.setLineDash([]);cx.restore();
+  });
+
+  (step.packets||[]).forEach(p=>{
+    const px=lerp(p.x,p.tx,t);
+    const py=lerp(p.y,p.ty,t);
+    const pr=8+Math.sin(ts/180)*1.5;
+    fcPulse(cx,px,py,pr+6,p.col,0.2*(1-t));
+    fcPacket(cx,px,py,p.col);
+  });
+
+  active.forEach(k=>{
+    const n=FN[k];
+    const r=3+Math.sin(ts/350+k.charCodeAt(0))*1.5;
+    fcPulse(cx,nCx(n),nCy(n),r+Math.min(n.w,n.h)/2,n.bdr,0.18+Math.sin(ts/500)*0.07);
+  });
+
+  fcRafId=requestAnimationFrame(fcDraw);
+}
+
+function fcUpdateLabel(){
+  const s=FS[fcStepIdx];
+  document.getElementById('fcStepLabel').textContent=`Step ${s.id} of ${FS.length} — ${s.label}`;
+}
+
+function fcTogglePlay(){
+  fcPlaying=!fcPlaying;
+  const btn=document.getElementById('fcPlay');
+  btn.textContent=fcPlaying?'⏸ Pause':'▶ Play';
+  btn.classList.toggle('fc-active',fcPlaying);
+  fcLastTs=null;
+}
+
+function fcStepFwd(){
+  fcPlaying=false;
+  document.getElementById('fcPlay').textContent='▶ Play';
+  document.getElementById('fcPlay').classList.remove('fc-active');
+  fcStepIdx=(fcStepIdx+1)%FS.length;
+  fcAnimT=1;fcLastTs=null;fcUpdateLabel();
+}
+
+function fcStepBack(){
+  fcPlaying=false;
+  document.getElementById('fcPlay').textContent='▶ Play';
+  document.getElementById('fcPlay').classList.remove('fc-active');
+  fcStepIdx=(fcStepIdx-1+FS.length)%FS.length;
+  fcAnimT=1;fcLastTs=null;fcUpdateLabel();
+}
+
+function fcRestart(){
+  fcStepIdx=0;fcAnimT=0;fcLastTs=null;
+  if(!fcPlaying){
+    fcPlaying=true;
+    document.getElementById('fcPlay').textContent='⏸ Pause';
+    document.getElementById('fcPlay').classList.add('fc-active');
+  }
+  fcUpdateLabel();
+}
+
+function fcSetSpeed(v){fcStepDur=+v}
+</script>
+</body>
+</html>

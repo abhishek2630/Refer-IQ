@@ -1,0 +1,35 @@
+# Refer IQ — Python dependencies
+# Tested on Python 3.11 (conda base / pyenv)
+
+# LLM
+anthropic>=0.28.0
+
+# API layer (Module F)
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+
+# Data validation — used throughout all modules
+pydantic>=2.7.0
+
+# Env management
+python-dotenv>=1.0.0
+
+# Vector store (Module E)
+chromadb>=0.5.0
+
+# Embeddings (Module E — sentence-transformers as alternative to Claude embeddings)
+sentence-transformers>=3.0.0
+
+# Document parsing (Module B)
+pypdf>=4.2.0
+Pillow>=10.3.0
+
+# Async HTTP (Module F orchestrator — parallel data pulls)
+httpx>=0.27.0
+
+# Data handling
+numpy>=1.26.0
+
+# Testing
+pytest>=8.2.0
+pytest-asyncio>=0.23.0
