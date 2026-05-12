@@ -375,10 +375,18 @@ def run_case(
     try:
         afford_input  = _build_affordability_input(case)
         affordability = assess_affordability(afford_input)
+        # Patch DTI from pre-computed ob.dti_pct (more accurate than
+        # commitment-based calc when outgoings are collapsed into essential_spend)
+        ob_dti = case.get("open_banking", {}).get("dti_pct")
+        if ob_dti is not None:
+            affordability.dti = round(float(ob_dti) / 100, 4)
+            affordability.dti_with_new_card = round(
+                affordability.dti + affordability.new_card_min_repayment / (float(case["applicant"]["gross_annual_gbp"]) / 12), 4
+            )
         steps.append(ProcessingStep(
             name="affordability", status="ok",
             duration_ms=int((time.time() - t0) * 1000),
-            detail=f"NDI £{affordability.ndi:,.0f} | limit £{affordability.recommended_limit:,} | {affordability.risk_band.value}",
+            detail=f"NDI £{affordability.ndi:,.0f} | DTI {affordability.dti:.0%} | limit £{affordability.recommended_limit:,} | {affordability.risk_band.value}",
         ))
     except Exception as e:
         steps.append(ProcessingStep(name="affordability", status="error",

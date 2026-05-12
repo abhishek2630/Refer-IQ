@@ -305,6 +305,56 @@ nav{height:var(--nav-h);background:var(--p);display:flex;align-items:center;just
 @keyframes shimmer{0%,100%{opacity:.4}50%{opacity:.8}}
 .thinking{font-size:11px;color:var(--ink-lt);font-style:italic;animation:shimmer 1.1s infinite;padding:7px 10px;align-self:flex-start}
 
+
+/* ── DECISION MODAL ── */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(26,16,37,.55);backdrop-filter:blur(3px);
+  z-index:200;display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{
+  background:var(--white);border-radius:14px;width:540px;max-width:92vw;
+  box-shadow:0 24px 60px rgba(74,31,110,.22);
+  display:flex;flex-direction:column;max-height:88vh;overflow:hidden;
+}
+.modal-hdr{
+  padding:16px 20px 14px;border-bottom:1px solid var(--rule);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+.modal-title{font-size:14px;font-weight:600;color:var(--ink);letter-spacing:-.01em}
+.modal-close{
+  width:26px;height:26px;border-radius:50%;border:none;background:var(--rule);
+  cursor:pointer;font-size:14px;color:var(--ink-lt);display:flex;
+  align-items:center;justify-content:center;transition:background .12s;
+}
+.modal-close:hover{background:var(--p-pale);color:var(--p)}
+.modal-body{padding:16px 20px;overflow-y:auto;flex:1}
+.modal-label{font-size:10px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.07em;color:var(--ink-lt);margin-bottom:6px}
+.modal-textarea{
+  width:100%;font-family:'DM Sans',sans-serif;font-size:12px;
+  padding:9px 11px;border:1px solid var(--rule);border-radius:var(--r);
+  background:var(--p-tint);color:var(--ink);resize:vertical;min-height:80px;
+  outline:none;transition:border-color .14s;line-height:1.5;
+}
+.modal-textarea:focus{border-color:var(--p-lt)}
+.letter-box{
+  background:var(--p-tint);border:1px solid var(--rule);border-radius:var(--r);
+  padding:14px 16px;font-size:11px;line-height:1.75;color:var(--ink-mid);
+  white-space:pre-wrap;max-height:320px;overflow-y:auto;margin-top:4px;
+  font-family:'DM Sans',sans-serif;
+}
+.letter-generating{
+  display:flex;align-items:center;gap:8px;padding:20px;
+  font-size:12px;color:var(--ink-lt);font-style:italic;
+}
+.modal-ftr{
+  padding:12px 20px;border-top:1px solid var(--rule);
+  display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;
+  background:var(--white);
+}
+
 /* Toast */
 .toast{
   position:fixed;bottom:20px;left:50%;
@@ -538,6 +588,18 @@ nav{height:var(--nav-h);background:var(--p);display:flex;align-items:center;just
     </div>
   </div>
 </div><!-- end #pane-flow -->
+
+<!-- ── DECISION MODAL ── -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOnBg(event)">
+  <div class="modal" id="modal">
+    <div class="modal-hdr">
+      <span class="modal-title" id="modalTitle">Decision</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-ftr" id="modalFtr"></div>
+  </div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -806,6 +868,12 @@ async function loadCaseFromAPI(idx) {
     if (loadingCaseId !== summary.id) return; // user clicked away
     active = mapApiCase(summary, result);
     CASES[idx] = active;  // cache enriched version
+    // Update the queue item label now we have real data
+    const qItem = document.querySelector(`.q-item[data-idx="${idx}"]`);
+    if (qItem) {
+      const aiEl = qItem.querySelector('.q-ai');
+      if (aiEl) aiEl.innerHTML = `<span class="ai-dot ${active.aiDot}"></span>${active.aiLabel}`;
+    }
     renderAll();
   } catch (e) {
     // API call failed — fall back to static data
@@ -979,10 +1047,22 @@ function renderAI() {
   if (apiMode && c._apiResult) {
     const steps = c._apiResult.steps || [];
     const stepHtml = steps.map(s => {
-      const col = s.status==='ok'?'var(--green)':s.status==='skipped'?'var(--amber)':'var(--red)';
-      return `<span style="color:${col};font-size:9px" title="${s.detail||''}">${s.name.replace('_',' ')} ${s.duration_ms}ms</span>`;
-    }).join('<span style="color:var(--rule);padding:0 3px">·</span>');
-    telemetry = `<div style="padding:8px 14px;border-bottom:1px solid var(--rule);background:var(--p-tint);font-size:9px;color:var(--ink-lt);line-height:1.8">${stepHtml}</div>`;
+      const col   = s.status==='ok'?'#1A9E6B':s.status==='skipped'?'#C47D0A':'#B83333';
+      const bg    = s.status==='ok'?'#E6F7F1':s.status==='skipped'?'#FEF5E4':'#FAEAEA';
+      const icon  = s.status==='ok'?'✓':s.status==='skipped'?'–':'✗';
+      const label = s.name.replace(/_/g,' ');
+      const time  = s.duration_ms > 0 ? `${s.duration_ms}ms` : '';
+      return `<div title="${s.detail||''}" style="display:flex;align-items:center;gap:4px;background:${bg};border-radius:4px;padding:3px 7px;font-size:9px;white-space:nowrap">
+        <span style="color:${col};font-weight:600">${icon}</span>
+        <span style="color:#3D2E52">${label}</span>
+        ${time?`<span style="color:#7B6893">${time}</span>`:''}
+      </div>`;
+    }).join('');
+    telemetry = `<div style="padding:8px 12px;border-bottom:1px solid var(--rule);background:#F7F2FC;display:flex;flex-wrap:wrap;gap:5px;align-items:center">
+      <span style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#7B6893;margin-right:2px">Pipeline</span>
+      ${stepHtml}
+      <span style="margin-left:auto;font-size:9px;color:#7B6893">${c._apiResult.total_ms}ms total</span>
+    </div>`;
   }
 
   document.getElementById('aiPanel').innerHTML = `
@@ -1080,33 +1160,290 @@ function sendChat() {
   }, apiMode ? 1200 : 850);
 }
 
-/* ── Decision logging ────────────────────────────────────────────────── */
+/* ── Modal helpers ───────────────────────────────────────────────────── */
 
-async function decide(type) {
-  const labels = {
-    ai:       `✓ Decision logged: ${active.approveLabel.replace(' ↗','')} — AI recommendation followed`,
-    override: `⚠ Override logged: Limit override entered — override reason required`,
-    decline:  `✓ Decision logged: Declined — CONC-compliant notice will be generated`,
-    refer:    `↑ Escalated to senior underwriter queue`,
+function openModal() {
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function closeModalOnBg(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+}
+
+/* Escape key closes modal */
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+/* ── Generate letter via Claude API (in-artifact call) ───────────────── */
+
+async function generateLetter(decisionType, reason, overrideLimit) {
+  const c = active;
+  const aff = c._apiResult?.affordability;
+  const fraud = c._apiResult?.fraud_aml;
+
+  const promptMap = {
+    decline: `You are a UK credit card issuer writing a formal CONC-compliant adverse decision notice.
+Write a professional decline letter for the following credit card application.
+FCA rules: do not specify the exact reason if fraud/AML related. Use clear plain English. Keep it under 250 words.
+
+Applicant: ${c.name}
+Case ref: ${c.id}
+Underwriter reason: ${reason}
+NDI: £${aff?.ndi?.toFixed(0) || '—'}/mo | DTI: ${aff ? (aff.dti*100).toFixed(0) : '—'}% | Score band: grey band
+Fraud/AML flags: ${fraud?.flags?.map(f=>f.label).join('; ') || 'none'}
+
+Write the letter. Include: date (today), applicant name, our reference, the decision, the general basis (credit assessment — do not cite specific fraud flags), right to request CRA details, contact details placeholder.`,
+
+    override: `You are a UK credit card underwriter documenting a limit override decision.
+Write a brief internal credit memo justifying the override, suitable for the audit trail.
+Keep under 150 words. Be specific and reference FCA Consumer Duty.
+
+Applicant: ${c.name} | Case: ${c.id}
+AI recommended limit: £${c._apiResult?.final_limit_gbp?.toLocaleString() || '—'}
+Override limit: £${overrideLimit?.toLocaleString() || '—'}
+Underwriter reason: ${reason}`,
+
+    refer: `You are a UK credit card underwriter escalating a case.
+Write a brief internal escalation note for the senior underwriter queue.
+Under 120 words. Include the key signals and why junior review is insufficient.
+
+Applicant: ${c.name} | Case: ${c.id}
+Fraud risk: ${fraud?.fraud_risk_score || '—'}/100 | Level: ${fraud?.fraud_risk_level || '—'}
+Flags: ${fraud?.flags?.map(f=>f.label).join('; ') || 'none'}
+Underwriter note: ${reason}`,
+
+    ai: `You are a UK credit card underwriter confirming an AI-recommended approval.
+Write a brief approval confirmation note for the audit trail. Under 100 words.
+
+Applicant: ${c.name} | Case: ${c.id}
+Approved limit: ${c.final_limit_label || c._apiResult?.final_limit_label || '—'}
+NDI: £${aff?.ndi?.toFixed(0) || '—'}/mo | Stress test: ${aff?.stress_result?.replace(/_/g,' ') || 'pass'}
+AI confidence: ${c.ai?.conf || '—'}%`
   };
 
+  const prompt = promptMap[decisionType];
+  if (!prompt) return '[Letter generation not available for this decision type]';
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await resp.json();
+    return data?.content?.[0]?.text || '[No response]';
+  } catch (e) {
+    return `[Letter generation unavailable — API error: ${e.message}]\n\nManual template:\n\nDear ${c.name},\n\nThank you for your recent application for a credit card.\n\nFollowing our assessment, we are unable to offer you credit at this time.\n\nIf you would like to know more about the information held about you, you may contact the credit reference agency used in our assessment.\n\nYours sincerely,\nCredit Decisions Team`;
+  }
+}
+
+/* ── Decision modal ──────────────────────────────────────────────────── */
+
+const DECISION_CONFIG = {
+  ai: {
+    title: '✓ Confirm AI recommendation',
+    color: 'var(--green)',
+    needsReason: false,
+    btnLabel: 'Confirm approval',
+    btnClass: 'btn-primary',
+    apiType: 'ai_approve',
+  },
+  override: {
+    title: '⚠ Override credit limit',
+    color: 'var(--amber)',
+    needsReason: true,
+    needsLimit: true,
+    btnLabel: 'Log override & generate memo',
+    btnClass: 'btn-secondary',
+    apiType: 'override',
+  },
+  decline: {
+    title: '✗ Decline application',
+    color: 'var(--red)',
+    needsReason: true,
+    btnLabel: 'Log decline & generate letter',
+    btnClass: 'btn-danger',
+    apiType: 'decline',
+  },
+  refer: {
+    title: '↑ Refer to senior underwriter',
+    color: 'var(--amber)',
+    needsReason: true,
+    btnLabel: 'Escalate & generate note',
+    btnClass: 'btn-warn',
+    apiType: 'refer_up',
+  },
+};
+
+function decide(type) {
+  const cfg = DECISION_CONFIG[type];
+  if (!cfg) return;
+
+  document.getElementById('modalTitle').textContent = cfg.title;
+  document.getElementById('modalTitle').style.color = cfg.color;
+
+  const aff = active._apiResult?.affordability;
+  const hasLimit = aff?.recommended_limit;
+
+  let bodyHtml = '';
+
+  /* Case summary strip */
+  bodyHtml += `<div style="background:var(--p-tint);border:1px solid var(--rule);border-radius:var(--r);padding:9px 12px;margin-bottom:14px;font-size:11px;display:flex;gap:16px;flex-wrap:wrap">
+    <span><b>${active.name}</b> &nbsp;·&nbsp; ${active.id}</span>
+    <span>AI verdict: <b>${active.ai?.verdict || '—'}</b></span>
+    <span>Limit: <b>${active._apiResult?.final_limit_label || active.approveLabel}</b></span>
+    ${aff ? `<span>NDI: <b>£${aff.ndi.toFixed(0)}/mo</b></span>` : ''}
+  </div>`;
+
+  /* Override limit field */
+  if (cfg.needsLimit) {
+    const suggested = aff?.recommended_limit || '';
+    bodyHtml += `<div style="margin-bottom:12px">
+      <div class="modal-label">Override limit (£)</div>
+      <input id="overrideLimit" type="number" min="100" max="10000" step="50"
+        value="${suggested}"
+        style="width:100%;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;
+               padding:8px 11px;border:1px solid var(--rule);border-radius:var(--r);
+               background:var(--p-tint);color:var(--p);outline:none"
+        placeholder="e.g. 1500">
+      <div style="font-size:9px;color:var(--ink-lt);margin-top:4px">
+        AI recommended: £${(aff?.recommended_limit || 0).toLocaleString()} &nbsp;·&nbsp; Max FCA CONC: £${(aff?.max_limit_fca || 0).toLocaleString()}
+      </div>
+    </div>`;
+  }
+
+  /* Reason textarea */
+  if (cfg.needsReason) {
+    const placeholder = {
+      decline: 'Document the specific reason for decline — e.g. "NDI insufficient after stress test", "CIFAS marker — senior UW sign-off required", "Open banking structuring pattern — AML referral"…',
+      override: 'Document your rationale for the limit override — must reference specific affordability evidence. Required for FCA Consumer Duty audit trail.',
+      refer: 'Summarise why this case exceeds junior analyst authority and what the senior underwriter should focus on.',
+    }[type] || 'Enter reason…';
+
+    bodyHtml += `<div style="margin-bottom:12px">
+      <div class="modal-label">Reason / decision rationale <span style="color:var(--red)">*</span></div>
+      <textarea class="modal-textarea" id="decisionReason" placeholder="${placeholder}" rows="4"></textarea>
+      <div style="font-size:9px;color:var(--ink-lt);margin-top:4px">Logged to audit trail · FCA Consumer Duty compliance</div>
+    </div>`;
+  }
+
+  /* Letter preview area (populated after submit) */
+  bodyHtml += `<div id="letterArea" style="display:none">
+    <div class="modal-label" style="margin-top:4px">Generated ${type === 'decline' ? 'decline letter' : type === 'override' ? 'override memo' : type === 'refer' ? 'escalation note' : 'approval note'}</div>
+    <div class="letter-box" id="letterContent"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-secondary" style="font-size:11px;padding:5px 12px" onclick="copyLetter()">📋 Copy letter</button>
+      <button class="btn btn-secondary" style="font-size:11px;padding:5px 12px" onclick="downloadLetter()">⬇ Download .txt</button>
+    </div>
+  </div>`;
+
+  document.getElementById('modalBody').innerHTML = bodyHtml;
+
+  /* Footer buttons */
+  let ftrHtml = `<button class="btn btn-secondary" style="font-size:12px" onclick="closeModal()">Cancel</button>`;
+
+  if (cfg.needsReason) {
+    ftrHtml += `<button class="btn ${cfg.btnClass}" style="font-size:12px" id="modalSubmitBtn" onclick="submitDecision('${type}')">${cfg.btnLabel}</button>`;
+  } else {
+    /* AI approve — simpler confirm */
+    ftrHtml += `<button class="btn ${cfg.btnClass}" style="font-size:12px" onclick="confirmAIApprove()">Confirm & log approval</button>`;
+  }
+
+  document.getElementById('modalFtr').innerHTML = ftrHtml;
+  openModal();
+}
+
+async function submitDecision(type) {
+  const reasonEl = document.getElementById('decisionReason');
+  const reason = reasonEl ? reasonEl.value.trim() : '';
+
+  if (!reason && DECISION_CONFIG[type].needsReason) {
+    reasonEl.style.borderColor = 'var(--red)';
+    reasonEl.placeholder = 'Reason is required before proceeding ↑';
+    reasonEl.focus();
+    return;
+  }
+
+  const overrideLimitEl = document.getElementById('overrideLimit');
+  const overrideLimit = overrideLimitEl ? parseInt(overrideLimitEl.value) : null;
+
+  /* Disable button, show generating state */
+  const btn = document.getElementById('modalSubmitBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+
+  /* Show letter area with spinner */
+  const letterArea = document.getElementById('letterArea');
+  const letterContent = document.getElementById('letterContent');
+  letterArea.style.display = 'block';
+  letterContent.innerHTML = '<div class="letter-generating"><span style="animation:spin 1s linear infinite;display:inline-block;font-size:16px">⟳</span> Generating with Claude…</div>';
+
+  /* Log to API */
   if (apiMode && active._apiResult) {
-    const decisionMap = { ai:'ai_approve', override:'override', decline:'decline', refer:'refer_up' };
     try {
       await apiFetch(`/cases/${active.id}/decision`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          decision_type:   decisionMap[type],
-          override_reason: type === 'override' ? 'Underwriter override — see audit log' : null,
+          decision_type: DECISION_CONFIG[type].apiType,
+          override_reason: reason || null,
+          override_limit: overrideLimit || null,
         }),
       });
-    } catch (e) {
-      /* Non-fatal — decision still shown to user */
-    }
+    } catch (e) { /* non-fatal */ }
   }
 
-  showToast(labels[type]);
+  /* Generate letter */
+  const letter = await generateLetter(type, reason, overrideLimit);
+  letterContent.textContent = letter;
+
+  if (btn) { btn.textContent = '✓ Decision logged'; btn.style.background = 'var(--green)'; btn.style.borderColor = 'var(--green)'; }
+  showToast(`Decision logged · ${DECISION_CONFIG[type].title}`);
+}
+
+async function confirmAIApprove() {
+  if (apiMode && active._apiResult) {
+    try {
+      await apiFetch(`/cases/${active.id}/decision`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision_type: 'ai_approve' }),
+      });
+    } catch (e) {}
+  }
+
+  /* Generate brief approval note */
+  const letterArea = document.getElementById('letterArea');
+  const letterContent = document.getElementById('letterContent');
+  letterArea.style.display = 'block';
+  letterContent.innerHTML = '<div class="letter-generating"><span style="animation:spin 1s linear infinite;display:inline-block;font-size:16px">⟳</span> Generating approval note…</div>';
+  document.getElementById('modalFtr').innerHTML = '<button class="btn btn-secondary" onclick="closeModal()">Close</button>';
+
+  const note = await generateLetter('ai', '', null);
+  letterContent.textContent = note;
+  showToast('✓ Approval logged · AI recommendation followed');
+}
+
+function copyLetter() {
+  const text = document.getElementById('letterContent').textContent;
+  navigator.clipboard.writeText(text).then(() => showToast('Letter copied to clipboard'));
+}
+
+function downloadLetter() {
+  const text = document.getElementById('letterContent').textContent;
+  const type = document.getElementById('modalTitle').textContent;
+  const fname = `${active.id}_${type.replace(/[^a-z0-9]/gi,'_').toLowerCase()}.txt`;
+  const blob = new Blob([text], { type: 'text/plain' });
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: fname });
+  a.click();
 }
 
 function showToast(msg) {
