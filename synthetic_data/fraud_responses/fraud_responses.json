@@ -1,0 +1,292 @@
+{
+  "REF-2025-00141": {
+    "case_id": "REF-2025-00141",
+    "applicant": { "name": "James Mellor", "dob": "1987-03-12", "postcode": "LS2 7PB" },
+    "cifas": {
+      "searched": true,
+      "markers": [],
+      "search_date": "2025-04-01",
+      "provider": "CIFAS"
+    },
+    "national_hunter": {
+      "searched": true,
+      "hits": [],
+      "hit_count": 0,
+      "search_date": "2025-04-01",
+      "provider": "National Hunter"
+    },
+    "identity": {
+      "kb_pass": true,
+      "doc_check_pass": true,
+      "name_match": true,
+      "dob_match": true,
+      "address_match": true,
+      "provider": "GBG Connexus"
+    },
+    "address": {
+      "application_postcode": "LS2 7PB",
+      "bureau_postcode": "LS2 7PB",
+      "electoral_roll_postcode": "LS2 7PB",
+      "address_changes_24mo": 0,
+      "consistency": "confirmed"
+    },
+    "pep_sanctions": {
+      "searched": true,
+      "pep_match": false,
+      "sanctions_match": false,
+      "search_date": "2025-04-01",
+      "provider": "Dow Jones Risk & Compliance"
+    },
+    "prior_applications": {
+      "declined_12mo": 0,
+      "total_searches_6mo": 4,
+      "lenders_searched_6mo": ["Barclaycard", "Santander", "NewDay", "Vanquis"]
+    },
+    "device_intelligence": {
+      "device_risk": "low",
+      "ip_country": "GB",
+      "vpn_detected": false,
+      "proxy_detected": false
+    }
+  },
+
+  "REF-2025-00138": {
+    "case_id": "REF-2025-00138",
+    "applicant": { "name": "Priya Sharma", "dob": "1990-07-04", "postcode": "E1 6RF" },
+    "cifas": {
+      "searched": true,
+      "markers": [],
+      "search_date": "2025-04-01",
+      "provider": "CIFAS"
+    },
+    "national_hunter": {
+      "searched": true,
+      "hits": [],
+      "hit_count": 0,
+      "search_date": "2025-04-01",
+      "provider": "National Hunter"
+    },
+    "identity": {
+      "kb_pass": true,
+      "doc_check_pass": true,
+      "name_match": true,
+      "dob_match": true,
+      "address_match": true,
+      "provider": "GBG Connexus"
+    },
+    "address": {
+      "application_postcode": "E1 6RF",
+      "bureau_postcode": "E1 6RF",
+      "electoral_roll_postcode": "E1 6RF",
+      "address_changes_24mo": 0,
+      "consistency": "confirmed"
+    },
+    "pep_sanctions": {
+      "searched": true,
+      "pep_match": false,
+      "sanctions_match": false,
+      "search_date": "2025-04-01",
+      "provider": "Dow Jones Risk & Compliance"
+    },
+    "prior_applications": {
+      "declined_12mo": 0,
+      "total_searches_6mo": 1,
+      "lenders_searched_6mo": ["Vanquis"]
+    },
+    "device_intelligence": {
+      "device_risk": "low",
+      "ip_country": "GB",
+      "vpn_detected": false,
+      "proxy_detected": false
+    }
+  },
+
+  "REF-2025-00133": {
+    "case_id": "REF-2025-00133",
+    "applicant": { "name": "Marcus Webb", "dob": "1983-11-29", "postcode": "B12 8QN" },
+    "cifas": {
+      "searched": true,
+      "markers": [
+        {
+          "category": 6,
+          "category_description": "Misuse of facility",
+          "filing_date": "2022-03-14",
+          "filing_member": "Redacted (CIFAS member)",
+          "status": "discharged",
+          "discharge_date": "2025-03-14",
+          "case_ref": "CIFAS-2022-B-441892"
+        }
+      ],
+      "search_date": "2025-04-01",
+      "provider": "CIFAS"
+    },
+    "national_hunter": {
+      "searched": true,
+      "hits": [
+        {
+          "hit_date": "2024-11-12",
+          "lender_type": "credit_card",
+          "outcome": "declined",
+          "postcode_used": "B15 2TU",
+          "name_used": "Marcus J Webb"
+        },
+        {
+          "hit_date": "2025-01-28",
+          "lender_type": "credit_card",
+          "outcome": "declined",
+          "postcode_used": "B12 8QN",
+          "name_used": "Marcus Webb"
+        }
+      ],
+      "hit_count": 2,
+      "search_date": "2025-04-01",
+      "provider": "National Hunter"
+    },
+    "identity": {
+      "kb_pass": true,
+      "doc_check_pass": true,
+      "name_match": true,
+      "dob_match": true,
+      "address_match": false,
+      "address_match_detail": "Application postcode B12 8QN does not match bureau primary address B15 2TU",
+      "provider": "GBG Connexus"
+    },
+    "address": {
+      "application_postcode": "B12 8QN",
+      "bureau_postcode": "B15 2TU",
+      "electoral_roll_postcode": "B14 6PP",
+      "address_changes_24mo": 3,
+      "consistency": "mismatch"
+    },
+    "pep_sanctions": {
+      "searched": true,
+      "pep_match": false,
+      "sanctions_match": false,
+      "search_date": "2025-04-01",
+      "provider": "Dow Jones Risk & Compliance"
+    },
+    "prior_applications": {
+      "declined_12mo": 2,
+      "total_searches_6mo": 5,
+      "lenders_searched_6mo": ["Barclaycard", "Capital One", "NewDay", "Vanquis", "Aqua"]
+    },
+    "device_intelligence": {
+      "device_risk": "medium",
+      "ip_country": "GB",
+      "vpn_detected": false,
+      "proxy_detected": false
+    }
+  },
+
+  "REF-2025-00129": {
+    "case_id": "REF-2025-00129",
+    "applicant": { "name": "Aoife Byrne", "dob": "1995-02-15", "postcode": "M4 1HQ" },
+    "cifas": {
+      "searched": true,
+      "markers": [],
+      "search_date": "2025-04-01",
+      "provider": "CIFAS"
+    },
+    "national_hunter": {
+      "searched": true,
+      "hits": [],
+      "hit_count": 0,
+      "search_date": "2025-04-01",
+      "provider": "National Hunter"
+    },
+    "identity": {
+      "kb_pass": true,
+      "doc_check_pass": true,
+      "name_match": true,
+      "dob_match": true,
+      "address_match": true,
+      "provider": "GBG Connexus"
+    },
+    "address": {
+      "application_postcode": "M4 1HQ",
+      "bureau_postcode": "M4 1HQ",
+      "electoral_roll_postcode": "M4 1HQ",
+      "address_changes_24mo": 1,
+      "consistency": "confirmed"
+    },
+    "pep_sanctions": {
+      "searched": true,
+      "pep_match": true,
+      "pep_match_detail": {
+        "matched_name": "Aoife Byrne",
+        "matched_dob": "1995-02-15",
+        "match_type": "name_and_dob",
+        "pep_category": "domestic_pep",
+        "pep_role": "Irish Government Official — Department of Finance",
+        "pep_jurisdiction": "Ireland",
+        "match_confidence": "medium",
+        "match_notes": "Common Irish name — may be coincidental. Requires EDD to confirm or rule out."
+      },
+      "sanctions_match": false,
+      "search_date": "2025-04-01",
+      "provider": "Dow Jones Risk & Compliance"
+    },
+    "prior_applications": {
+      "declined_12mo": 0,
+      "total_searches_6mo": 2,
+      "lenders_searched_6mo": ["American Express", "Nationwide"]
+    },
+    "device_intelligence": {
+      "device_risk": "low",
+      "ip_country": "GB",
+      "vpn_detected": false,
+      "proxy_detected": false
+    }
+  },
+
+  "REF-2025-00121": {
+    "case_id": "REF-2025-00121",
+    "applicant": { "name": "David Okafor", "dob": "1988-08-03", "postcode": "SE15 4NG" },
+    "cifas": {
+      "searched": true,
+      "markers": [],
+      "search_date": "2025-04-01",
+      "provider": "CIFAS"
+    },
+    "national_hunter": {
+      "searched": true,
+      "hits": [],
+      "hit_count": 0,
+      "search_date": "2025-04-01",
+      "provider": "National Hunter"
+    },
+    "identity": {
+      "kb_pass": true,
+      "doc_check_pass": true,
+      "name_match": true,
+      "dob_match": true,
+      "address_match": true,
+      "provider": "GBG Connexus"
+    },
+    "address": {
+      "application_postcode": "SE15 4NG",
+      "bureau_postcode": "SE15 4NG",
+      "electoral_roll_postcode": "SE15 4NG",
+      "address_changes_24mo": 0,
+      "consistency": "confirmed"
+    },
+    "pep_sanctions": {
+      "searched": true,
+      "pep_match": false,
+      "sanctions_match": false,
+      "search_date": "2025-04-01",
+      "provider": "Dow Jones Risk & Compliance"
+    },
+    "prior_applications": {
+      "declined_12mo": 0,
+      "total_searches_6mo": 3,
+      "lenders_searched_6mo": ["Barclaycard", "Santander", "Amazon"]
+    },
+    "device_intelligence": {
+      "device_risk": "low",
+      "ip_country": "GB",
+      "vpn_detected": false,
+      "proxy_detected": false
+    }
+  }
+}
