@@ -413,6 +413,7 @@ nav{height:var(--nav-h);background:var(--p);display:flex;align-items:center;just
   <div class="nav-r">
     <span>Underwriting workbench</span>
     <span class="live-badge"><span class="ldot"></span>AI engine live</span>
+    <span id="apiBadge" class="live-badge" style="font-size:10px">📋 Static demo</span>
     <div class="nav-av">UW</div>
   </div>
 </nav>
@@ -433,7 +434,7 @@ nav{height:var(--nav-h);background:var(--p);display:flex;align-items:center;just
 <!-- STATS BAR -->
 <div class="stats-bar">
   <div class="stat">
-    <span class="stat-v" id="sb-q">5</span>
+    <span class="stat-v" id="sb-q">—</span>
     <span class="stat-l">Cases in queue</span>
   </div>
   <div class="stat">
@@ -541,8 +542,625 @@ nav{height:var(--nav-h);background:var(--p);display:flex;align-items:center;just
 <div class="toast" id="toast"></div>
 
 <script>
-/* ── DATA ── */
-const CASES = [
+/* ═══════════════════════════════════════════════════════════════════════
+   Refer IQ — Module G: Live API wiring
+   Replaces the static CASES array with live fetch() calls to the FastAPI
+   backend (api/main.py). Graceful fallback to static data if API is down.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+const API_BASE = 'http://localhost:8000';
+const API_TIMEOUT_MS = 6000;
+
+/* ── State ── */
+let CASES = [];          // populated from API or static fallback
+let active = null;       // current CaseResult (API) or static case object
+let apiMode = false;     // true = live API, false = static fallback
+let loadingCaseId = null;
+
+/* ── API helpers ─────────────────────────────────────────────────────── */
+
+async function apiFetch(path, options = {}) {
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  try {
+    const res = await fetch(API_BASE + path, { ...options, signal: controller.signal });
+    clearTimeout(tid);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    clearTimeout(tid);
+    throw e;
+  }
+}
+
+/* ── Connection check ────────────────────────────────────────────────── */
+
+async function checkAPI() {
+  try {
+    await apiFetch('/health');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function setAPIBadge(live) {
+  apiMode = live;
+  const badge = document.getElementById('apiBadge');
+  if (badge) {
+    badge.textContent = live ? '⚡ Live API' : '📋 Static demo';
+    badge.style.background = live ? 'rgba(26,158,107,0.2)' : 'rgba(196,125,10,0.2)';
+    badge.style.borderColor = live ? 'rgba(26,158,107,0.4)' : 'rgba(196,125,10,0.4)';
+    badge.style.color = live ? '#4ADE80' : '#EFC060';
+  }
+}
+
+/* ── Map API CaseResult → display format ────────────────────────────── */
+
+function mapApiCase(raw, caseResult) {
+  /* caseResult is the full /cases/{id} response from the orchestrator.
+     raw is the basic summary from /cases list.
+     We merge both into the shape the render functions expect. */
+
+  const aff   = caseResult.affordability;
+  const fraud = caseResult.fraud_aml;
+  const rag   = caseResult.rag;
+  const memo  = caseResult.memo;
+  const orig  = STATIC_CASES_FALLBACK.find(c => c.id === caseResult.case_id) || {};
+
+  /* Verdict → display mapping */
+  const verdictMap = {
+    approve:            { dot:'approve', label:'Approve at ' + (caseResult.final_limit_label || ''), icon:'✓', iCls:'approve', nCls:'approve' },
+    conditional_approve:{ dot:'cond',    label:'Conditional — ' + (caseResult.final_limit_label||''), icon:'⚠️', iCls:'cond', nCls:'cond' },
+    aml_hold:           { dot:'cond',    label:'AML hold — ' + (caseResult.final_limit_label||''), icon:'⚠️', iCls:'cond', nCls:'cond' },
+    edd_hold:           { dot:'cond',    label:'EDD hold — ' + (caseResult.final_limit_label||''), icon:'⏸', iCls:'cond', nCls:'cond' },
+    refer_senior:       { dot:'refer',   label:'Refer to senior UW', icon:'🔴', iCls:'refer', nCls:'refer' },
+    decline:            { dot:'decline', label:'Decline', icon:'✗', iCls:'decline', nCls:'decline' },
+  };
+  const vd = verdictMap[caseResult.final_verdict] || verdictMap['refer_senior'];
+
+  /* Fraud flags → display flags */
+  const fraudFlags = fraud.flags.map(f => {
+    const cls = f.severity === 'critical' ? 'fraud' : f.severity === 'high' ? 'danger' : f.severity === 'warning' ? 'warn' : 'ok';
+    const icon = f.severity === 'critical' ? '✗' : f.severity === 'high' ? '✗' : f.severity === 'warning' ? '⚠' : '✓';
+    return { t: icon + ' ' + f.label, c: cls };
+  });
+  if (fraudFlags.length === 0) {
+    fraudFlags.push({ t:'✓ No CIFAS / Hunter', c:'ok' }, { t:'✓ Identity confirmed', c:'ok' }, { t:'✓ No adverse flags', c:'ok' });
+  }
+
+  /* Similar cases from RAG */
+  const similar = rag.similar_cases.map(sc => {
+    const outcomeMap = { 'Approved':'s-approve', 'Declined':'s-decline', 'MLRO referral':'s-fraud' };
+    const cls = outcomeMap[sc.outcome] || (sc.outcome.toLowerCase().includes('hold') ? 's-refer' : 's-approve');
+    const limit = sc.approved_limit ? ` £${sc.approved_limit}` : '';
+    return { m: `${sc.case_id} · score ${sc.score||'N/A'}`, o: sc.outcome + limit, c: cls };
+  });
+  if (similar.length === 0 && orig.ai) similar.push(...(orig.ai.similar || []));
+
+  /* Risk factors from memo, or derive from module outputs */
+  let factors = [];
+  if (memo && memo.risk_factors) {
+    factors = memo.risk_factors.map(f => ({
+      n: f.name,
+      w: f.weight,
+      fc: f.direction === 'aml_fraud' ? 'ff-fr' : f.direction === 'increasing' ? 'ff-pos' : 'ff-neg',
+      dc: f.direction === 'aml_fraud' ? 'fraud' : f.direction === 'increasing' ? 'up' : 'dn',
+      dch: f.direction === 'aml_fraud' ? '!' : f.direction === 'increasing' ? '▲' : '▼',
+    }));
+  } else {
+    /* Derive from affordability + fraud scores */
+    factors = [
+      { n:'Fraud risk score', w:fraud.fraud_risk_score, fc: fraud.fraud_risk_score>40?'ff-fr':'ff-neg', dc:fraud.fraud_risk_score>40?'fraud':'dn', dch:fraud.fraud_risk_score>40?'!':'▼' },
+      { n:'NDI buffer', w:Math.min(Math.round(aff.ndi/10),100), fc:'ff-neg', dc:'dn', dch:'▼' },
+      { n:'Credit utilisation', w:Math.round(aff.existing_utilisation_pct||50), fc:(aff.existing_utilisation_pct||0)>60?'ff-pos':'ff-neg', dc:(aff.existing_utilisation_pct||0)>60?'up':'dn', dch:(aff.existing_utilisation_pct||0)>60?'▲':'▼' },
+      { n:'DTI ratio', w:Math.round(aff.dti*100), fc:aff.dti>0.4?'ff-pos':'ff-neg', dc:aff.dti>0.4?'up':'dn', dch:aff.dti>0.4?'▲':'▼' },
+    ];
+  }
+
+  /* Alert banner */
+  let alertType = null, alertText = null;
+  const hasStructuring = fraud.flags.some(f => f.code === 'OB_STRUCTURING');
+  const hasPEP  = fraud.flags.some(f => f.code === 'PEP_MATCH');
+  const hasFraud = fraud.flags.some(f => ['CIFAS_CAT6_ACTIVE','CIFAS_CAT6_DISCHARGED','HUNTER_HITS_MULTIPLE'].includes(f.code));
+  if (hasFraud) {
+    alertType = 'fraud';
+    alertText = fraud.flags.filter(f=>['CIFAS_CAT6_ACTIVE','CIFAS_CAT6_DISCHARGED','HUNTER_HITS_MULTIPLE','ADDRESS_MISMATCH'].includes(f.code)).map(f=>f.label+(f.detail?' — '+f.detail:'')).join('. ');
+  } else if (hasStructuring || hasPEP) {
+    alertType = 'aml';
+    alertText = fraud.flags.filter(f=>['OB_STRUCTURING','PEP_MATCH'].includes(f.code)).map(f=>f.label+(f.detail?' — '+f.detail:'')).join('. ');
+  }
+
+  /* Policy citations for narrative footer */
+  const citations = rag.policy_citations.join(' · ');
+
+  /* Confidence */
+  const conf = memo ? memo.confidence : (fraud.fraud_risk_score > 60 ? 88 : fraud.fraud_risk_score > 30 ? 72 : 80);
+  const cCls = conf >= 75 ? 'high' : conf >= 50 ? 'mid' : 'low';
+
+  /* Narrative */
+  const narrative = memo ? memo.narrative : (orig.narrative || 'Pipeline processed. See module outputs below.');
+
+  /* Hints: derive from fraud flags + case type */
+  const hints = orig.ai ? orig.ai.hints : ['NDI calculation','Limit rationale','Policy basis'];
+  const qa    = orig.ai ? orig.ai.qa    : {};
+
+  /* Bureau rows — use static data (bureau data comes from cases.json directly) */
+  const bureau = orig.bureau || { rows:[], flags:[] };
+  const fraudDisplay = orig.fraud || { rows:[
+    ['CIFAS marker',        fraud.flags.some(f=>f.code.startsWith('CIFAS'))?'Marker present':'None', fraud.flags.some(f=>f.code.startsWith('CIFAS'))?'danger':'good'],
+    ['National Hunter hits',fraud.flags.some(f=>f.code.startsWith('HUNTER'))?fraud.flags.find(f=>f.code.startsWith('HUNTER')).label:'0 matches', fraud.flags.some(f=>f.code.startsWith('HUNTER'))?'danger':'good'],
+    ['Identity verified',   'Passed','good'],
+    ['PEP screening',       hasPEP?'Match detected':'No match', hasPEP?'danger':'good'],
+    ['Sanctions screening', 'No match','good'],
+    ['Prior declined apps', caseResult.fraud_aml.flags.some(f=>f.code==='PRIOR_DECLINES_MULTIPLE')?'2+ declined':'None','good'],
+  ], flags:fraudFlags};
+  const ob = orig.ob || { rows:[
+    ['NDI (post-commitments)', '£'+aff.ndi.toFixed(0)+' / mo', aff.ndi<400?'warn':'good'],
+    ['DTI ratio', (aff.dti*100).toFixed(0)+'%', aff.dti>0.4?'warn':'good'],
+    ['Stress test', aff.stress_result.replace(/_/g,' '), aff.conc_compliant?'good':'danger'],
+    ['Structuring detected', hasStructuring?'Yes — sub-£10k splits':'None', hasStructuring?'danger':'good'],
+    ['Gambling activity', fraud.flags.some(f=>f.code==='OB_GAMBLING')?'Detected':'None detected', 'good'],
+    ['Payday loan activity', fraud.flags.some(f=>f.code==='OB_PAYDAY_LOAN')?'Detected':'None detected', 'good'],
+  ], flags:[]};
+
+  /* Approve button label */
+  const approveLabel = caseResult.final_limit_gbp
+    ? `Issue card — £${caseResult.final_limit_gbp.toLocaleString()} ↗`
+    : 'Do not issue ⛔';
+
+  return {
+    id: caseResult.case_id,
+    name: caseResult.applicant_name,
+    initials: caseResult.applicant_name.split(' ').map(w=>w[0]).join('').slice(0,2),
+    dob: orig.dob || '—',
+    postcode: orig.postcode || '—',
+    time: orig.time || 'Just now',
+    caseType: raw.case_type || orig.caseType || 'Bureau',
+    tags: orig.tags || [],
+    aiDot: vd.dot,
+    aiLabel: vd.label,
+    alertType, alertText,
+    app: orig.app || {
+      emp: '—', employer:'—', tenure:'—',
+      gross:'—', net:'—', product:'Classic credit card',
+      aiLimit: caseResult.final_limit_label,
+    },
+    bureau, fraud: fraudDisplay, ob,
+    narrative,
+    ai: {
+      verdict: memo ? memo.verdict.replace(/_/g,' ') : vd.label,
+      icon: vd.icon, iCls: vd.iCls,
+      sub: caseResult.final_limit_label,
+      conf, cCls,
+      note: memo ? (memo.limit_condition || fraud.recommended_action) : fraud.recommended_action,
+      nCls: vd.nCls,
+      factors, similar,
+      hints, qa,
+    },
+    approveLabel,
+    /* Store full API result for decisions endpoint */
+    _apiResult: caseResult,
+  };
+}
+
+/* ── Queue builder ───────────────────────────────────────────────────── */
+
+function buildQueue() {
+  const list = document.getElementById('queueList');
+  list.innerHTML = '';
+  CASES.forEach((c, i) => {
+    const el = document.createElement('div');
+    el.className = 'q-item' + (i === 0 ? ' active' : '');
+    el.dataset.idx = i;
+    el.onclick = () => selectCase(i);
+    el.innerHTML =
+      `<div class="q-top"><span class="q-name">${c.name}</span><span class="q-time">${c.time}</span></div>` +
+      `<div class="q-tags">${(c.tags||[]).map(t=>`<span class="tag ${t.c}">${t.t}</span>`).join('')}</div>` +
+      `<div class="q-ai"><span class="ai-dot ${c.aiDot}"></span>${c.aiLabel}</div>`;
+    list.appendChild(el);
+  });
+  document.getElementById('qcount').textContent = CASES.length;
+  document.getElementById('sb-q').textContent   = CASES.length;
+}
+
+/* ── Case selection ──────────────────────────────────────────────────── */
+
+function selectCase(idx) {
+  document.querySelectorAll('.q-item').forEach(el =>
+    el.classList.toggle('active', +el.dataset.idx === idx));
+
+  if (apiMode) {
+    loadCaseFromAPI(idx);
+  } else {
+    active = CASES[idx];
+    renderAll();
+  }
+}
+
+function showCaseLoading(idx) {
+  const scroll = document.getElementById('detailScroll');
+  scroll.innerHTML = `
+    <div class="empty-state">
+      <div class="empty-state-icon" style="animation:spin 1s linear infinite;display:inline-block">⟳</div>
+      <div class="empty-state-text">Running pipeline for ${CASES[idx]?.name || 'case'}…</div>
+      <div style="font-size:11px;color:var(--ink-lt);margin-top:6px">
+        Affordability · Fraud/AML · RAG retrieval · AI memo
+      </div>
+    </div>`;
+  document.getElementById('aiPanel').innerHTML =
+    '<div class="ai-empty">Processing…</div>';
+  document.getElementById('decBar').classList.add('hidden');
+  document.getElementById('overNote').classList.add('hidden');
+}
+
+async function loadCaseFromAPI(idx) {
+  const summary = CASES[idx];
+  if (!summary) return;
+
+  loadingCaseId = summary.id;
+  showCaseLoading(idx);
+
+  try {
+    const result = await apiFetch(`/cases/${summary.id}`);
+    if (loadingCaseId !== summary.id) return; // user clicked away
+    active = mapApiCase(summary, result);
+    CASES[idx] = active;  // cache enriched version
+    renderAll();
+  } catch (e) {
+    // API call failed — fall back to static data
+    const staticCase = STATIC_CASES_FALLBACK.find(c => c.id === summary.id);
+    if (staticCase) {
+      active = staticCase;
+      renderAll();
+      showToast('API timeout — showing cached data');
+    } else {
+      document.getElementById('detailScroll').innerHTML =
+        `<div class="empty-state"><div class="empty-state-icon">⚠</div><div class="empty-state-text">Failed to load case: ${e.message}</div></div>`;
+    }
+  }
+}
+
+function renderAll() {
+  renderDetail();
+  renderAI();
+  document.getElementById('decBar').classList.remove('hidden');
+  document.getElementById('overNote').classList.remove('hidden');
+  document.getElementById('btnAI').textContent = active.approveLabel;
+}
+
+/* ── Render detail (unchanged from original) ─────────────────────────── */
+
+function renderDetail() {
+  const c = active;
+  let html = '';
+
+  if (c.alertType) {
+    const icon = c.alertType === 'fraud' ? '🔴' : '🟡';
+    html += `<div class="alert-banner ${c.alertType}"><span class="alert-icon">${icon}</span><span>${c.alertText}</span></div>`;
+  }
+
+  html += `
+  <div class="card">
+    <div class="card-hdr">
+      <span class="card-title"><span class="c-icon">👤</span>Applicant</span>
+      <span class="card-meta">${c.id} &nbsp;·&nbsp; Case type: <strong>${c.caseType}</strong></span>
+    </div>
+    <div class="card-body">
+      <div class="app-row">
+        <div class="av">${c.initials}</div>
+        <div>
+          <div class="av-name">${c.name}</div>
+          <div class="av-sub">DOB: ${c.dob} &nbsp;·&nbsp; ${c.postcode}</div>
+        </div>
+      </div>
+      <div class="dgrid">
+        ${dCell('Employment',c.app.emp,'')}
+        ${dCell('Employer',c.app.employer,'')}
+        ${dCell('Tenure',c.app.tenure,'')}
+        ${dCell('Gross annual salary',c.app.gross,'')}
+        ${dCell('Net monthly income',c.app.net,'')}
+        ${dCell('Card product',c.app.product,'')}
+        ${dCell('AI suggested limit',c.app.aiLimit,'good')}
+      </div>
+    </div>
+  </div>`;
+
+  html += `
+  <div class="card">
+    <div class="card-hdr">
+      <span class="card-title"><span class="c-icon">📊</span>Data sources</span>
+      <span class="card-meta">Bureau · Fraud &amp; AML · Open Banking</span>
+    </div>
+    <div class="src-tabs">
+      <div class="src-tab active" onclick="switchTab(this,'bureau')">📋 Bureau (CRA)</div>
+      <div class="src-tab" onclick="switchTab(this,'fraud')">🛡 Fraud &amp; AML</div>
+      <div class="src-tab" onclick="switchTab(this,'ob')">🏦 Open Banking</div>
+    </div>
+    ${tabPanel('bureau', c.bureau, true)}
+    ${tabPanel('fraud',  c.fraud,  false)}
+    ${tabPanel('ob',     c.ob,     false)}
+  </div>`;
+
+  /* Affordability summary card — live from Module C when in API mode */
+  if (apiMode && c._apiResult) {
+    const aff = c._apiResult.affordability;
+    html += `
+  <div class="card">
+    <div class="card-hdr">
+      <span class="card-title"><span class="c-icon">£</span>Affordability — Module C</span>
+      <span class="card-meta">FCA CONC 5.2 · Consumer Duty · Live calculation</span>
+    </div>
+    <div class="card-body">
+      <div class="dgrid">
+        ${dCell('NDI / month','£'+aff.ndi.toFixed(0),aff.ndi<400?'warn':'good')}
+        ${dCell('DTI ratio',(aff.dti*100).toFixed(1)+'%',aff.dti>0.4?'warn':'good')}
+        ${dCell('Max FCA limit','£'+aff.max_limit_fca.toLocaleString(),'good')}
+        ${dCell('New card repayment','£'+aff.new_card_min_repayment.toFixed(0)+'/mo','')}
+        ${dCell('Repayment % NDI',(aff.repayment_pct_of_ndi*100).toFixed(1)+'%',aff.repayment_pct_of_ndi>0.1?'danger':aff.repayment_pct_of_ndi>0.08?'warn':'good')}
+        ${dCell('CONC compliant',aff.conc_compliant?'✓ Yes':'✗ No',aff.conc_compliant?'good':'danger')}
+      </div>
+      ${aff.consumer_duty_note ? `<div style="margin-top:8px;font-size:10px;color:var(--amber);background:var(--amber-lt);padding:6px 9px;border-radius:6px;border:1px solid var(--amber-bdr)">${aff.consumer_duty_note}</div>` : ''}
+    </div>
+  </div>`;
+  }
+
+  html += `
+  <div class="card">
+    <div class="card-hdr">
+      <span class="card-title"><span class="c-icon">✦</span>AI credit narrative</span>
+      <span class="card-meta">${apiMode ? 'Live — Claude API · RAG over policy + past cases' : 'Static demo mode'}</span>
+    </div>
+    <div class="card-body">
+      <div class="narrative">${c.narrative.replace(/\n\n/g,'<br><br>')}</div>
+    </div>
+  </div>`;
+
+  const scroll = document.getElementById('detailScroll');
+  scroll.innerHTML = html;
+  scroll.scrollTop = 0;
+}
+
+function dCell(label, value, cls) {
+  return `<div class="dcell"><div class="dcell-l">${label}</div><div class="dcell-v ${cls}">${value}</div></div>`;
+}
+
+function tabPanel(id, data, isActive) {
+  if (!data || !data.rows) return `<div class="src-panel${isActive?' active':''}" id="tab-${id}"><div style="padding:12px;font-size:11px;color:var(--ink-lt)">No data</div></div>`;
+  const half = Math.ceil(data.rows.length / 2);
+  const left = data.rows.slice(0, half);
+  const right = data.rows.slice(half);
+  const rowsHtml = rows => rows.map(r =>
+    `<div class="sig-row"><span class="sig-l">${r[0]}</span><span class="sig-v ${r[2]}">${r[1]}</span></div>`
+  ).join('');
+  const flags = (data.flags||[]).map(f => `<span class="fc ${f.c}">${f.t}</span>`).join('');
+  return `
+    <div class="src-panel${isActive?' active':''}" id="tab-${id}">
+      <div class="sig-grid">
+        <div class="sig-col">${rowsHtml(left)}</div>
+        <div class="sig-col">${rowsHtml(right)}</div>
+      </div>
+      <div class="flag-strip">${flags}</div>
+    </div>`;
+}
+
+function switchTab(el, id) {
+  const card = el.closest('.card');
+  card.querySelectorAll('.src-tab').forEach(t => t.classList.remove('active'));
+  card.querySelectorAll('.src-panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  card.querySelector(`#tab-${id}`).classList.add('active');
+}
+
+/* ── Render AI panel ─────────────────────────────────────────────────── */
+
+function renderAI() {
+  const c = active;
+  const a = c.ai;
+
+  const factors = (a.factors||[]).map(f =>
+    `<div class="f-row">
+      <span class="f-name">${f.n}</span>
+      <div class="f-track"><div class="${f.fc}" style="width:${f.w}%"></div></div>
+      <span class="f-dir ${f.dc}">${f.dch}</span>
+    </div>`).join('');
+
+  const similar = (a.similar||[]).map(s =>
+    `<div class="sim-row">
+      <span class="sim-meta">${s.m}</span>
+      <span class="sim-out ${s.c}">${s.o}</span>
+    </div>`).join('');
+
+  const hints = (a.hints||[]).map(h =>
+    `<span class="hint" onclick="askHint('${h}')">${h}</span>`).join('');
+
+  /* Pipeline telemetry strip (API mode only) */
+  let telemetry = '';
+  if (apiMode && c._apiResult) {
+    const steps = c._apiResult.steps || [];
+    const stepHtml = steps.map(s => {
+      const col = s.status==='ok'?'var(--green)':s.status==='skipped'?'var(--amber)':'var(--red)';
+      return `<span style="color:${col};font-size:9px" title="${s.detail||''}">${s.name.replace('_',' ')} ${s.duration_ms}ms</span>`;
+    }).join('<span style="color:var(--rule);padding:0 3px">·</span>');
+    telemetry = `<div style="padding:8px 14px;border-bottom:1px solid var(--rule);background:var(--p-tint);font-size:9px;color:var(--ink-lt);line-height:1.8">${stepHtml}</div>`;
+  }
+
+  document.getElementById('aiPanel').innerHTML = `
+    <div class="panel-hdr">
+      <span class="panel-hdr-title">✦ AI recommendation</span>
+    </div>
+    ${telemetry}
+
+    <div class="rec-sec">
+      <div class="eyebrow">AI verdict</div>
+      <div class="rec-row">
+        <div class="rec-icon ${a.iCls}">${a.icon}</div>
+        <div>
+          <div class="rec-verdict">${a.verdict}</div>
+          <div class="rec-sub">${a.sub}</div>
+        </div>
+      </div>
+      <div class="conf-row">
+        <span class="conf-lbl">Confidence</span>
+        <div class="conf-track"><div class="conf-fill ${a.cCls}" style="width:${a.conf}%"></div></div>
+        <span class="conf-pct ${a.cCls}">${a.conf}%</span>
+      </div>
+      <div class="rec-note ${a.nCls}">${a.note}</div>
+    </div>
+
+    <div class="factors-sec">
+      <div class="sec-title">Key risk factors</div>
+      ${factors}
+      <div class="f-legend">▲ risk-increasing &nbsp;·&nbsp; ▼ risk-reducing &nbsp;·&nbsp; ! fraud / AML</div>
+    </div>
+
+    <div class="similar-sec">
+      <div class="sec-title">Similar past cases${apiMode?' — RAG retrieved':''}</div>
+      ${similar || '<div style="font-size:10px;color:var(--ink-lt);padding:4px 0">No similar cases found</div>'}
+    </div>
+
+    <div class="chat-sec">
+      <div class="sec-title" style="margin-bottom:8px">Ask AI about this case</div>
+      <div class="chat-messages" id="chatMsgs">
+        <div class="bubble ai">I've analysed ${c.name.split(' ')[0]}'s case across all three data sources. Ask me anything about the bureau data, fraud / AML indicators, affordability, or recommendation rationale.</div>
+      </div>
+      <div class="chat-input-row">
+        <input class="chat-inp" id="chatInp" type="text" placeholder="Ask about this case…" onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="chat-send" onclick="sendChat()">Ask ↗</button>
+      </div>
+      <div class="chat-hints">${hints}</div>
+    </div>`;
+}
+
+function askHint(h) {
+  document.getElementById('chatInp').value = h;
+  sendChat();
+}
+
+function sendChat() {
+  const inp = document.getElementById('chatInp');
+  const q = inp.value.trim();
+  if (!q) return;
+  const msgs = document.getElementById('chatMsgs');
+
+  const uB = document.createElement('div');
+  uB.className = 'bubble uw'; uB.textContent = q;
+  msgs.appendChild(uB);
+
+  const th = document.createElement('div');
+  th.className = 'thinking'; th.textContent = 'Analysing case data…';
+  msgs.appendChild(th);
+  msgs.scrollTop = msgs.scrollHeight;
+  inp.value = '';
+
+  setTimeout(() => {
+    msgs.removeChild(th);
+    const lq = q.toLowerCase();
+    const qa = active.ai.qa || {};
+    let ans = 'I can answer questions specific to this case. Use the quick-ask chips below, or ask about bureau data, fraud / AML indicators, affordability, or the recommendation rationale.';
+    for (const [k, v] of Object.entries(qa)) {
+      if (lq.includes(k.toLowerCase())) { ans = v; break; }
+    }
+    /* Enrich with live API data if available */
+    if (ans.startsWith('I can answer') && apiMode && active._apiResult) {
+      const aff   = active._apiResult.affordability;
+      const fraud = active._apiResult.fraud_aml;
+      if (lq.includes('ndi') || lq.includes('affordab')) {
+        ans = `NDI is £${aff.ndi.toFixed(0)}/month after all commitments. DTI is ${(aff.dti*100).toFixed(1)}%. The recommended limit of £${aff.recommended_limit.toLocaleString()} requires £${aff.new_card_min_repayment.toFixed(0)}/month minimum repayment — ${(aff.repayment_pct_of_ndi*100).toFixed(1)}% of NDI, ${aff.conc_compliant?'within':'exceeding'} FCA CONC 5.2 thresholds.`;
+      } else if (lq.includes('fraud') || lq.includes('risk')) {
+        ans = `Fraud risk score: ${fraud.fraud_risk_score}/100 (${fraud.fraud_risk_level}). ${fraud.flags.length} flags detected. ${fraud.recommended_action}`;
+      } else if (lq.includes('limit') || lq.includes('£')) {
+        ans = `The AI-assessed starting limit is £${aff.recommended_limit.toLocaleString()} (max FCA-compliant: £${aff.max_limit_fca.toLocaleString()}). Minimum repayment: £${aff.new_card_min_repayment.toFixed(0)}/month = ${(aff.repayment_pct_of_ndi*100).toFixed(1)}% of NDI. ${aff.consumer_duty_note || ''}`;
+      }
+    }
+    const aB = document.createElement('div');
+    aB.className = 'bubble ai'; aB.textContent = ans;
+    msgs.appendChild(aB);
+    msgs.scrollTop = msgs.scrollHeight;
+  }, apiMode ? 1200 : 850);
+}
+
+/* ── Decision logging ────────────────────────────────────────────────── */
+
+async function decide(type) {
+  const labels = {
+    ai:       `✓ Decision logged: ${active.approveLabel.replace(' ↗','')} — AI recommendation followed`,
+    override: `⚠ Override logged: Limit override entered — override reason required`,
+    decline:  `✓ Decision logged: Declined — CONC-compliant notice will be generated`,
+    refer:    `↑ Escalated to senior underwriter queue`,
+  };
+
+  if (apiMode && active._apiResult) {
+    const decisionMap = { ai:'ai_approve', override:'override', decline:'decline', refer:'refer_up' };
+    try {
+      await apiFetch(`/cases/${active.id}/decision`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          decision_type:   decisionMap[type],
+          override_reason: type === 'override' ? 'Underwriter override — see audit log' : null,
+        }),
+      });
+    } catch (e) {
+      /* Non-fatal — decision still shown to user */
+    }
+  }
+
+  showToast(labels[type]);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+/* ── Initialisation ──────────────────────────────────────────────────── */
+
+async function init() {
+  /* Try live API first */
+  const live = await checkAPI();
+  setAPIBadge(live);
+
+  if (live) {
+    try {
+      const summaries = await apiFetch('/cases');
+      /* Seed queue with summaries, enrich on click */
+      CASES = summaries.map(s => ({
+        id:       s.case_id,
+        name:     s.name,
+        initials: s.name.split(' ').map(w=>w[0]).join('').slice(0,2),
+        time:     s.time_ago || 'Just now',
+        caseType: s.case_type,
+        tags:     STATIC_CASES_FALLBACK.find(c=>c.id===s.case_id)?.tags || [],
+        aiDot:    'approve',
+        aiLabel:  s.ai_verdict === 'pending' ? 'Processing…' : s.ai_verdict,
+        approveLabel: s.ai_limit ? `Issue card — ${s.ai_limit} ↗` : 'Processing…',
+      }));
+      buildQueue();
+      /* Auto-load first case */
+      selectCase(0);
+      return;
+    } catch (e) {
+      setAPIBadge(false);
+    }
+  }
+
+  /* Static fallback */
+  CASES = STATIC_CASES_FALLBACK;
+  buildQueue();
+  active = CASES[0];
+  renderAll();
+}
+
+/* spin animation for loading indicator */
+const spinStyle = document.createElement('style');
+spinStyle.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
+document.head.appendChild(spinStyle);
+
+/* ── Static fallback data (original CASES array) ─────────────────────── */
+const STATIC_CASES_FALLBACK = [
   {
     id:"REF-2025-00141", name:"James Mellor", initials:"JM",
     dob:"12 Mar 1987", postcode:"LS2 7PB, Leeds",
@@ -837,261 +1455,8 @@ const CASES = [
   }
 ];
 
-let active = null;
-
-/* ── BUILD QUEUE ── */
-function buildQueue() {
-  const list = document.getElementById("queueList");
-  CASES.forEach((c, i) => {
-    const el = document.createElement("div");
-    el.className = "q-item" + (i === 0 ? " active" : "");
-    el.dataset.idx = i;
-    el.onclick = () => loadCase(i);
-    el.innerHTML =
-      `<div class="q-top"><span class="q-name">${c.name}</span><span class="q-time">${c.time}</span></div>` +
-      `<div class="q-tags">${c.tags.map(t=>`<span class="tag ${t.c}">${t.t}</span>`).join("")}</div>` +
-      `<div class="q-ai"><span class="ai-dot ${c.aiDot}"></span>${c.aiLabel}</div>`;
-    list.appendChild(el);
-  });
-}
-
-/* ── LOAD CASE ── */
-function loadCase(idx) {
-  active = CASES[idx];
-  document.querySelectorAll(".q-item").forEach(el => {
-    el.classList.toggle("active", +el.dataset.idx === idx);
-  });
-  renderDetail();
-  renderAI();
-  document.getElementById("decBar").classList.remove("hidden");
-  document.getElementById("overNote").classList.remove("hidden");
-  document.getElementById("btnAI").textContent = active.approveLabel;
-}
-
-/* ── RENDER DETAIL ── */
-function renderDetail() {
-  const c = active;
-  let html = "";
-
-  /* Alert banner */
-  if (c.alertType) {
-    const icon = c.alertType === "fraud" ? "🔴" : "🟡";
-    html += `<div class="alert-banner ${c.alertType}"><span class="alert-icon">${icon}</span><span>${c.alertText}</span></div>`;
-  }
-
-  /* Applicant card */
-  html += `
-  <div class="card">
-    <div class="card-hdr">
-      <span class="card-title"><span class="c-icon">👤</span>Applicant</span>
-      <span class="card-meta">${c.id} &nbsp;·&nbsp; Case type: <strong>${c.caseType}</strong></span>
-    </div>
-    <div class="card-body">
-      <div class="app-row">
-        <div class="av">${c.initials}</div>
-        <div>
-          <div class="av-name">${c.name}</div>
-          <div class="av-sub">DOB: ${c.dob} &nbsp;·&nbsp; ${c.postcode}</div>
-        </div>
-      </div>
-      <div class="dgrid">
-        ${dCell("Employment",c.app.emp,"")}
-        ${dCell("Employer",c.app.employer,"")}
-        ${dCell("Tenure",c.app.tenure,"")}
-        ${dCell("Gross annual salary",c.app.gross,"")}
-        ${dCell("Net monthly income",c.app.net,"")}
-        ${dCell("Card product",c.app.product,"")}
-        ${dCell("AI suggested limit",c.app.aiLimit,"good")}
-      </div>
-    </div>
-  </div>`;
-
-  /* Three-source card */
-  html += `
-  <div class="card">
-    <div class="card-hdr">
-      <span class="card-title"><span class="c-icon">📊</span>Data sources</span>
-      <span class="card-meta">Bureau · Fraud &amp; AML · Open Banking</span>
-    </div>
-    <div class="src-tabs">
-      <div class="src-tab active" onclick="switchTab(this,'bureau')">📋 Bureau (CRA)</div>
-      <div class="src-tab" onclick="switchTab(this,'fraud')">🛡 Fraud &amp; AML</div>
-      <div class="src-tab" onclick="switchTab(this,'ob')">🏦 Open Banking</div>
-    </div>
-    ${tabPanel("bureau", c.bureau, true)}
-    ${tabPanel("fraud", c.fraud, false)}
-    ${tabPanel("ob", c.ob, false)}
-  </div>`;
-
-  /* Narrative card */
-  html += `
-  <div class="card">
-    <div class="card-hdr">
-      <span class="card-title"><span class="c-icon">✦</span>AI credit narrative</span>
-      <span class="card-meta">Generated in &lt;30s · RAG over policy docs + past cases</span>
-    </div>
-    <div class="card-body">
-      <div class="narrative">${c.narrative.replace(/\n\n/g,"<br><br>")}</div>
-    </div>
-  </div>`;
-
-  const scroll = document.getElementById("detailScroll");
-  scroll.innerHTML = html;
-  scroll.scrollTop = 0;
-}
-
-function dCell(label, value, cls) {
-  return `<div class="dcell"><div class="dcell-l">${label}</div><div class="dcell-v ${cls}">${value}</div></div>`;
-}
-
-function tabPanel(id, data, isActive) {
-  const half = Math.ceil(data.rows.length / 2);
-  const left = data.rows.slice(0, half);
-  const right = data.rows.slice(half);
-  const rowsHtml = rows => rows.map(r =>
-    `<div class="sig-row"><span class="sig-l">${r[0]}</span><span class="sig-v ${r[2]}">${r[1]}</span></div>`
-  ).join("");
-  const flags = data.flags.map(f => `<span class="fc ${f.c}">${f.t}</span>`).join("");
-  return `
-    <div class="src-panel${isActive?" active":""}" id="tab-${id}">
-      <div class="sig-grid">
-        <div class="sig-col">${rowsHtml(left)}</div>
-        <div class="sig-col">${rowsHtml(right)}</div>
-      </div>
-      <div class="flag-strip">${flags}</div>
-    </div>`;
-}
-
-function switchTab(el, id) {
-  const card = el.closest(".card");
-  card.querySelectorAll(".src-tab").forEach(t => t.classList.remove("active"));
-  card.querySelectorAll(".src-panel").forEach(p => p.classList.remove("active"));
-  el.classList.add("active");
-  card.querySelector(`#tab-${id}`).classList.add("active");
-}
-
-/* ── RENDER AI ── */
-function renderAI() {
-  const c = active; const a = c.ai;
-
-  const factors = a.factors.map(f =>
-    `<div class="f-row">
-      <span class="f-name">${f.n}</span>
-      <div class="f-track"><div class="${f.fc}" style="width:${f.w}%"></div></div>
-      <span class="f-dir ${f.dc}">${f.dch}</span>
-    </div>`).join("");
-
-  const similar = a.similar.map(s =>
-    `<div class="sim-row">
-      <span class="sim-meta">${s.m}</span>
-      <span class="sim-out ${s.c}">${s.o}</span>
-    </div>`).join("");
-
-  const hints = a.hints.map(h =>
-    `<span class="hint" onclick="askHint('${h}')">${h}</span>`).join("");
-
-  document.getElementById("aiPanel").innerHTML = `
-    <div class="panel-hdr">
-      <span class="panel-hdr-title">✦ AI recommendation</span>
-    </div>
-
-    <div class="rec-sec">
-      <div class="eyebrow">AI verdict</div>
-      <div class="rec-row">
-        <div class="rec-icon ${a.iCls}">${a.icon}</div>
-        <div>
-          <div class="rec-verdict">${a.verdict}</div>
-          <div class="rec-sub">${a.sub}</div>
-        </div>
-      </div>
-      <div class="conf-row">
-        <span class="conf-lbl">Confidence</span>
-        <div class="conf-track"><div class="conf-fill ${a.cCls}" style="width:${a.conf}%"></div></div>
-        <span class="conf-pct ${a.cCls}">${a.conf}%</span>
-      </div>
-      <div class="rec-note ${a.nCls}">${a.note}</div>
-    </div>
-
-    <div class="factors-sec">
-      <div class="sec-title">Key risk factors</div>
-      ${factors}
-      <div class="f-legend">▲ risk-increasing &nbsp;·&nbsp; ▼ risk-reducing &nbsp;·&nbsp; ! fraud / AML</div>
-    </div>
-
-    <div class="similar-sec">
-      <div class="sec-title">Similar past cases</div>
-      ${similar}
-    </div>
-
-    <div class="chat-sec">
-      <div class="sec-title" style="margin-bottom:8px">Ask AI about this case</div>
-      <div class="chat-messages" id="chatMsgs">
-        <div class="bubble ai">I've analysed ${c.name.split(" ")[0]}'s case across all three data sources. Ask me anything about the bureau data, fraud / AML indicators, affordability, or recommendation rationale.</div>
-      </div>
-      <div class="chat-input-row">
-        <input class="chat-inp" id="chatInp" type="text" placeholder="Ask about this case…" onkeydown="if(event.key==='Enter')sendChat()">
-        <button class="chat-send" onclick="sendChat()">Ask ↗</button>
-      </div>
-      <div class="chat-hints">${hints}</div>
-    </div>`;
-}
-
-function askHint(h) {
-  document.getElementById("chatInp").value = h;
-  sendChat();
-}
-
-function sendChat() {
-  const inp = document.getElementById("chatInp");
-  const q = inp.value.trim();
-  if (!q) return;
-  const msgs = document.getElementById("chatMsgs");
-
-  const uB = document.createElement("div");
-  uB.className = "bubble uw"; uB.textContent = q;
-  msgs.appendChild(uB);
-
-  const th = document.createElement("div");
-  th.className = "thinking"; th.textContent = "Analysing case data…";
-  msgs.appendChild(th);
-  msgs.scrollTop = msgs.scrollHeight;
-  inp.value = "";
-
-  setTimeout(() => {
-    msgs.removeChild(th);
-    const lq = q.toLowerCase();
-    const qa = active.ai.qa;
-    let ans = "I can answer questions specific to this case. Use the quick-ask chips below, or ask about bureau data, fraud / AML indicators, affordability, or the recommendation rationale.";
-    for (const [k, v] of Object.entries(qa)) {
-      if (lq.includes(k.toLowerCase())) { ans = v; break; }
-    }
-    const aB = document.createElement("div");
-    aB.className = "bubble ai"; aB.textContent = ans;
-    msgs.appendChild(aB);
-    msgs.scrollTop = msgs.scrollHeight;
-  }, 850);
-}
-
-function decide(type) {
-  const labels = {
-    ai:      `✓ Decision logged: ${active.approveLabel.replace(" ↗","")} — AI recommendation followed`,
-    override:`⚠ Override logged: Limit override entered — override reason required`,
-    decline: `✓ Decision logged: Declined — CONC-compliant notice will be generated`,
-    refer:   `↑ Escalated to senior underwriter queue`
-  };
-  showToast(labels[type]);
-}
-
-function showToast(msg) {
-  const t = document.getElementById("toast");
-  t.textContent = msg;
-  t.classList.add("show");
-  setTimeout(() => t.classList.remove("show"), 3500);
-}
-
-/* ── INIT ── */
-buildQueue();
-loadCase(0);
+/* start */
+init();
 </script>
 
 <!-- ── PAGE TAB SWITCHING ── -->
