@@ -1,0 +1,68 @@
+DOCUMENT: AML, Fraud and Financial Crime Policy
+SOURCE: Internal credit policy — aligned with POCA 2002, MLR 2017, CIFAS rules
+VERSION: 2024 update
+DOCUMENT_ID: policy_aml_fraud
+
+---
+
+SECTION 1: POCA 2002 — Proceeds of Crime Act Obligations
+
+1.1 SAR SUBMISSION THRESHOLD: Under POCA 2002 s.330, a firm must submit a Suspicious Activity Report (SAR) to the National Crime Agency (NCA) where a person in the regulated sector knows or suspects, or has reasonable grounds to know or suspect, that another person is engaged in money laundering.
+
+1.2 The threshold for SAR submission is suspicion, not proof. Where a firm has reasonable grounds to suspect that funds may be the proceeds of crime — including cash structuring patterns — a SAR must be submitted before the account is opened (a "consent SAR" under POCA 2002 s.335).
+
+1.3 CASH STRUCTURING (SMURFING): The deliberate structuring of transactions into amounts below reporting thresholds to avoid detection is an offence under POCA 2002. Three or more consecutive cash deposits each below £10,000 in a single account, particularly where the account holder has relatively modest employment income, constitutes a structuring pattern requiring AML analyst review.
+
+1.4 TIPPING OFF: Under POCA 2002 s.333A, it is a criminal offence to tip off a customer that a SAR has been or may be submitted, or that an AML investigation is underway. Decline notices in structuring cases must not reference AML concerns. Use generic adverse data language only.
+
+1.5 CONSENT AND MORATORIUM: Where a consent SAR is submitted, the firm must await NCA response before proceeding. The NCA has 7 working days to refuse consent. Where consent is refused, the transaction must not proceed. Where no response is received within 7 working days, the firm may proceed.
+
+---
+
+SECTION 2: MLR 2017 — Money Laundering Regulations
+
+2.1 PEP DEFINITION: A Politically Exposed Person (PEP) is an individual who holds or has held a prominent public function within the last 12 months, including: heads of state, government ministers, members of parliament, senior judicial officials, senior military officials, senior executives of state-owned enterprises, and ambassadors. The definition extends to immediate family members and known close associates.
+
+2.2 EDD OBLIGATION: For all PEP relationships, Enhanced Due Diligence (EDD) is mandatory regardless of perceived risk level. Standard CDD is insufficient. EDD must include: (a) senior management approval before account opening, (b) adequate measures to establish the source of wealth and source of funds, and (c) enhanced ongoing monitoring.
+
+2.3 FALSE POSITIVE PEP MATCHES: Where an automated PEP screening match occurs but the firm believes it may be a false positive (e.g. a common name/DOB combination), the firm must still complete EDD before proceeding. The false positive determination must be documented by a compliance officer — it cannot be made unilaterally by the underwriter.
+
+2.4 SOURCE OF FUNDS: For PEP cases, the source of funds must be established to a higher standard than standard CDD. Acceptable evidence includes: SA302 tax returns, audited business accounts, payslips from the public role, or legal documents evidencing inheritance or property sale.
+
+2.5 SENIOR MANAGEMENT APPROVAL: Under MLR 2017, senior management approval is required before opening an account for a confirmed PEP. This approval must be documented and retained for the duration of the relationship and for 5 years thereafter.
+
+---
+
+SECTION 3: CIFAS Rules and Obligations
+
+3.1 CIFAS CATEGORY 6 — MISUSE OF FACILITY: A CIFAS Category 6 marker indicates that the individual has previously used a financial facility in a way that caused financial loss or constituted fraud (e.g. obtaining credit by deception, using a product for money laundering, or deliberately defaulting while concealing assets). This is the most serious CIFAS category for credit decisions.
+
+3.2 ACTIVE VS DISCHARGED: An active CIFAS Category 6 marker is a hard decline indicator. A discharged CIFAS Category 6 marker (where the prescribed period has elapsed) is not an automatic decline but requires senior underwriter sign-off and documented rationale for any approval.
+
+3.3 CIFAS MEMBER OBLIGATIONS: As a CIFAS member, the firm is obligated to file new markers where fraud or misuse is confirmed. Failure to file a marker where one is warranted is a breach of CIFAS membership rules.
+
+3.4 CATEGORIES 1–5: Lower CIFAS categories (1–5) cover application fraud, misrepresentation, and identity fraud. These require case-by-case assessment. A Category 1 (first-party fraud) marker in combination with other risk signals is typically a decline. Category 3 (misrepresentation) may be manageable depending on age and context.
+
+---
+
+SECTION 4: National Hunter
+
+4.1 PURPOSE: National Hunter is a shared application fraud database used by UK lenders to identify multiple simultaneous or sequential credit applications that may indicate fraud. A "hit" means the applicant has applied for similar credit at another lender within the lookback window.
+
+4.2 SINGLE HIT: A single National Hunter hit requires investigation. The underwriter should check whether the other application used the same identity details and whether it was declined. A single hit with no other adverse signals may be explained by shopping behaviour.
+
+4.3 MULTIPLE HITS: Two or more National Hunter hits within 6 months is a significant fraud indicator, particularly where different postcodes or name variants are used. This pattern is consistent with sequential application fraud — attempting to obtain credit from multiple lenders before any can share negative data. Refer to senior underwriter.
+
+4.4 HUNTER PLUS CIFAS: The combination of National Hunter hits and a CIFAS marker (any category) is a high-risk signal requiring MLRO involvement, regardless of the age or status of the CIFAS marker.
+
+---
+
+SECTION 5: Identity Verification
+
+5.1 KNOWLEDGE-BASED AUTHENTICATION (KBA): The firm uses knowledge-based authentication as a first-line identity check. KBA failure does not automatically disqualify an application but should be followed by documentary verification.
+
+5.2 DOCUMENT CHECKS: Document verification (passport, driving licence) provides stronger identity assurance than KBA alone. Where both KBA and document checks pass, identity is considered verified.
+
+5.3 ADDRESS CONSISTENCY: The application address must be consistent with the bureau address and electoral roll. A mismatch between application postcode and bureau postcode is a material fraud indicator, particularly in combination with other signals.
+
+5.4 MULTIPLE ADDRESS CHANGES: Three or more address changes within 24 months, combined with other adverse signals, may indicate an attempt to build a synthetic credit profile or evade previous adverse data.

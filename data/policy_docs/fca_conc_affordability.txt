@@ -1,0 +1,58 @@
+DOCUMENT: FCA CONC — Creditworthiness and Affordability
+SOURCE: FCA Consumer Credit sourcebook (CONC), Chapter 5
+VERSION: Post-Consumer Duty update (2023)
+DOCUMENT_ID: policy_conc_affordability
+
+---
+
+SECTION 1: CONC 5.2 — Creditworthiness Assessment
+
+1.1 Before entering into a regulated credit agreement, a firm must undertake a reasonable assessment of the creditworthiness of the customer, including the customer's ability to make repayments as they fall due over the life of the regulated credit agreement.
+
+1.2 The assessment must be based on sufficient information obtained from the customer and, where necessary, from a credit reference agency. The firm must consider the customer's income, regular expenditure, and existing financial commitments.
+
+1.3 For credit cards and revolving credit facilities, the creditworthiness assessment must include a stress test: the firm must assess whether the customer can meet the minimum repayment requirement on the proposed credit limit without material difficulty, taking into account the customer's net disposable income (NDI) after all existing commitments.
+
+1.4 MINIMUM REPAYMENT STRESS TEST: The minimum repayment on a new credit card should not, in the firm's reasonable assessment, exceed 10% of the customer's net disposable income (NDI) at the point of origination. For near-prime applicants (credit scores in the grey band), a more conservative threshold of 8% is considered best practice under Consumer Duty.
+
+1.5 NET DISPOSABLE INCOME (NDI) CALCULATION: NDI is calculated as net monthly income minus all monthly committed expenditure, including: rent or mortgage payments, existing credit card minimum payments, personal loan repayments, and other regular financial commitments. Essential living costs (groceries, utilities, transport) must also be estimated and deducted.
+
+1.6 DEBT-TO-INCOME RATIO (DTI): The DTI ratio (total monthly minimum commitments divided by gross monthly income) is a supplementary affordability indicator. A DTI above 40% requires documented justification for approval. A DTI above 55% is ordinarily a decline indicator.
+
+1.7 INCOME VERIFICATION: Where possible, income should be verified through open banking data, payslips, or P60 documents. For self-employed applicants, SA302 tax returns or HMRC tax year overviews covering at least two years are the preferred income evidence.
+
+1.8 CREDIT LIMIT SETTING: The credit limit must be set by the lender based on the creditworthiness and affordability assessment. The applicant does not request or set their own limit. The starting limit should be proportionate to the customer's verified income and existing commitments.
+
+---
+
+SECTION 2: Consumer Duty — Credit Limit Best Interests Obligation
+
+2.1 Under FCA Consumer Duty (PS22/9), firms must ensure that the credit products they provide deliver good outcomes for customers. For credit cards, this means the credit limit must be genuinely affordable and in the customer's best interest — not merely technically affordable on a standalone basis.
+
+2.2 HIGH UTILISATION: Where a customer already has high utilisation across existing revolving credit facilities (above 60%), approving a new card at the maximum FCA-compliant limit may not serve the customer's best interests. A stepped-down starting limit with a credit limit increase review pathway (typically 6 months of on-time payments) is the preferred Consumer Duty-compliant approach.
+
+2.3 NEAR-PRIME LOW-TO-GROW STRATEGY: For grey-band (near-prime) applicants, it is considered good practice to set conservative starting limits and build the credit relationship incrementally. This approach reduces default risk, gives the customer the opportunity to demonstrate payment conduct, and supports responsible lending obligations.
+
+2.4 THIN FILE APPLICANTS: A thin credit file (insufficient credit history to score confidently) is not the same as adverse credit history. Where open banking, employment, and identity verification all support a positive profile, a thin file should not be treated as a risk signal warranting automatic decline or severe limit restriction. Alternative data (open banking income verification) may be used to supplement thin-file assessments per Consumer Duty guidance.
+
+2.5 OVERRIDE DOCUMENTATION: Any decision that deviates from the AI-assessed recommendation must be documented with a reason code. Approvals above the AI-recommended limit must include a specific affordability justification. Declines of AI-recommended approvals must reference a specific policy rule or risk concern.
+
+---
+
+SECTION 3: CONC 5.3 — Refusing or Reducing Credit
+
+3.1 Where a firm declines a credit application on the basis of information from a credit reference agency, the firm must inform the customer of this fact and provide the name and contact details of the relevant CRA.
+
+3.2 ADVERSE INFORMATION NOTICE: The firm must provide a notice of refusal citing the general basis for the decision. The notice must not identify the specific CRA data item that triggered the refusal, but must inform the customer of their right to obtain their credit file.
+
+3.3 Where a fraud or AML concern is the basis for a non-approval, the firm must not indicate the specific fraud concern to the customer in any decline notice, to avoid alerting a potential fraudster to the detection. The case should be retained and escalated internally.
+
+---
+
+SECTION 4: Vulnerable Customers
+
+4.1 Firms must make reasonable adjustments to identify and support customers who may be in vulnerable circumstances, including financial difficulty, mental health issues, or life events that may affect their financial situation.
+
+4.2 Indicators of potential vulnerability in credit applications include: recent significant income reduction, high payday loan activity, escalating debt across multiple facilities, or patterns of minimum-payment-only conduct on existing accounts.
+
+4.3 Where vulnerability indicators are present, the creditworthiness assessment must be conducted with additional care. A lower starting limit and proactive affordability check at 12 months is recommended.
